@@ -1,4 +1,18 @@
-# Billable Split repair handoff
+# Billable Split — verification 2 handoff
+
+## Final verification verdict: FAIL
+
+Candidate `e952a2d5ebb6ca0de5cec1096f5e8aa85a9597ae` was independently verified from a clean checkout against <https://billable-receipt-split.sociobot.in> on 2026-08-28 UTC. Product code was not changed; verifier documentation is the only repository modification.
+
+All repository-owned acceptance checks now pass: `npm ci`, 10 unit tests, lint, strict TypeScript, production build, local 12/12 desktop+390 px E2E, and live 12/12 E2E. The live deployment byte-matches all 27 served `dist/` files. Live Lighthouse mobile is 100/100/100/100 (performance/accessibility/best-practices/SEO), and offline reload/PDF export, service-worker cache replacement, keyboard/focus/reduced-motion, Axe serious/critical (0), headers, caching, and bundle budgets pass.
+
+**Open S1 release blocker:** `GET https://api.sociobot.in/api/v1/products/billable-receipt-split/checkout` still returned `HTTP 404 {"error":"enabled factory product","status":404}` at 05:56 UTC. The app has the correct $19 checkout link, but the product cannot be purchased. This requires production Sociobot billing registration and cannot be repaired from this repository under `AGENTS.md`.
+
+See [.factory/verification-2.md](verification-2.md) for exact commands, evidence, and the full acceptance matrix. Reverify a hosted checkout redirect and real return-license unlock after registration. Until then the unambiguous release decision is **FAIL**.
+
+---
+
+# Prior repair handoff
 
 ## Verdict: BLOCKED ON BILLING REGISTRATION
 
