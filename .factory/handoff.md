@@ -1,3 +1,17 @@
+# Billable Split — verification 4 handoff
+
+## Final verification verdict: FAIL
+
+Candidate `3193740ba65dfa51a4cbea95bb3b42d74c8f24e9` was independently verified from a clean checkout against <https://billable-receipt-split.sociobot.in> on 2026-08-28 UTC. Product source was not changed; this verification documentation is the only repository change.
+
+**S1 release blocker:** the production Sociobot license verification endpoint did not rate-limit rapid invalid-token checks. Two fresh bursts to `GET https://api.sociobot.in/api/v1/products/billable-receipt-split/verify?license=qa-rate-limit-invalid` returned **80/80 HTTP 200 at 20-way concurrency** and then **200/200 HTTP 200 at 40-way concurrency**. No `429` or `Retry-After` response was observed, so the required threshold is absent. The work order explicitly requires rate limiting for any server-side endpoint, including this product-unlock API. The Sociobot API owner must add throttling, return `429` with `Retry-After`, and have the threshold independently reverified.
+
+All other fresh checks pass: `npm ci`; lint; TypeScript; 10 unit/integration tests; audit; exact production build; 12/12 local and 12/12 live desktop+390px browser scenarios; job allocation, CSV/PDF hash evidence, persistence, encrypted backup/restore/deletion, invalid-input recovery, offline reload/PDF and service-worker update; keyboard/focus/reduced motion; Axe serious/critical 0; local-first outbound-request privacy; deployment headers/caching; and 27/27 live build artifacts byte-matching the candidate. Production checkout is now healthy (`303` to a Dodo hosted session) and `npm run test:release` passes. Fresh Lighthouse mobile: 97 performance / 100 accessibility / 100 best practices / 100 SEO, with 2.1 s LCP, 0 ms TBT, and CLS 0.
+
+See [.factory/verification-4.md](verification-4.md) for exact commands and evidence. Until the rate-limit defect is fixed and independently rechecked, the unambiguous release decision is **FAIL**.
+
+---
+
 # Billable Split — repair 3 handoff
 
 ## Final verdict: PASS
