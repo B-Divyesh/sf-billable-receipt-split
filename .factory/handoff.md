@@ -1,3 +1,17 @@
+# Billable Split — verification 3 handoff
+
+## Final verification verdict: FAIL
+
+Candidate `bcd43e3f3c6b827f4ca0b67cfbaa3bf01baa93f9` was independently verified from a clean checkout against <https://billable-receipt-split.sociobot.in> on 2026-08-28 UTC. Product source was not changed; this verification documentation is the only change.
+
+**S1 release blocker:** the exact visible one-time checkout URL, `https://api.sociobot.in/api/v1/products/billable-receipt-split/checkout`, still returns `HTTP 404 {"error":"enabled factory product","status":404}`. The app uses the required Sociobot billing URL, but a buyer cannot start checkout. This must be remedied by registering/enabling the production product in the billing service; repository policy forbids repairing billing here. Until a hosted checkout redirect and returned real-license unlock succeed, the release verdict is **FAIL**.
+
+All repository-owned acceptance checks pass afresh: clean install; lint; strict TypeScript; 10 unit/integration tests; production build; local and live 12/12 desktop+390px E2E; source-to-job CSV evidence with SHA-256 and classifications; encrypted backup/restore/deletion; offline reload/PDF and service-worker update/cache cleanup; keyboard/focus/reduced motion; Axe serious/critical 0; privacy/outbound-request checks; headers/caching; and live byte comparison (27/27 exposed files matched the candidate build). Fresh Lighthouse mobile is 98 performance / 100 accessibility / 100 best practices / 100 SEO, with 2.0s LCP, 0ms TBT, and CLS 0.
+
+See [.factory/verification-3.md](verification-3.md) for exact commands and evidence.
+
+---
+
 # Billable Split — repair 2 handoff
 
 ## Final verification verdict: BLOCKED ON EXTERNAL BILLING
