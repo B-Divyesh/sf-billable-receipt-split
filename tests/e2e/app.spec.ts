@@ -151,18 +151,24 @@ test('rejects a line total below its allocations and disables exports for legacy
   await split.getByLabel('Job').fill('Oak Street');
   await split.getByLabel('Amount').fill('40.00');
   await split.getByRole('button', { name: 'Add split' }).click();
+  await expect(page.locator('form.allocation-row')).toHaveCount(1);
   split = page.locator('form.new-allocation').first();
   await split.getByLabel('Job').fill('Pine Avenue');
   await split.getByLabel('Amount').fill('20.00');
   await split.getByRole('button', { name: 'Add split' }).click();
+  await expect(page.locator('form.allocation-row')).toHaveCount(2);
 
   await page.getByLabel('Line description').fill('Fasteners');
   await page.getByLabel('Line total').last().fill('40.00');
   await page.getByRole('button', { name: /Add line/ }).click();
+  // Saving a line persists through IndexedDB before the editor re-renders. Wait
+  // for that second editor rather than assuming local-development timing.
+  await expect(page.locator('form.new-allocation')).toHaveCount(2);
   split = page.locator('form.new-allocation').nth(1);
   await split.getByLabel('Job').fill('Shop overhead');
   await split.getByLabel('Amount').fill('40.00');
   await split.getByRole('button', { name: 'Add split' }).click();
+  await expect(page.locator('form.allocation-row')).toHaveCount(3);
   await expect(page.getByText('Ready to export').first()).toBeVisible();
 
   const editLine = page.locator('form.edit-line').first();

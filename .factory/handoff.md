@@ -1,3 +1,41 @@
+# Billable Split — repair 2 handoff
+
+## Final verification verdict: BLOCKED ON EXTERNAL BILLING
+
+Work order `billable-receipt-split-repair-2` audited independent verifier report commit `8f2cf58976253afedb9f8e497e8e878f74c132a9` against candidate `e952a2d5ebb6ca0de5cec1096f5e8aa85a9597ae` on 2026-08-28 UTC.
+
+The report has one release blocker. It remains reproducible from this worker:
+
+```text
+GET https://api.sociobot.in/api/v1/products/billable-receipt-split/checkout
+HTTP 404
+{"error":"enabled factory product","status":404}
+```
+
+The app already uses that exact required Sociobot checkout URL; the invalid-license verification endpoint still returns `200` with `{"valid":false,"reason":"invalid"...}`. Product registration is owned by the production Sociobot billing service, and `AGENTS.md` explicitly prohibits this repository from changing billing. No safe source change can turn an unregistered product into a hosted purchase. The free local-first receipt workflow, export, deletion, backup, and license-return handling were left intact.
+
+## Repair made
+
+While rerunning the verifier's live browser matrix, the allocation-integrity E2E scenario exposed a test race: it submitted another allocation before the previous IndexedDB save had finished rendering, which could make the test query a detached editor at production latency. `tests/e2e/app.spec.ts` now waits for the persisted allocation-row count after each save and waits for the second editor after adding the second line. This preserves the exact $100 / $60+$40 allocation integrity regression while proving each persisted state before the next action.
+
+## Verification evidence
+
+- Clean dependency install: `npm ci` — pass; 86 packages, 0 audit vulnerabilities.
+- Static analysis: `npm run lint`, `npx tsc --noEmit`, and `npm audit --audit-level=low` — pass.
+- Unit/integration: `npm test` — pass; 3 files / 10 tests.
+- Production build: `npm run build` — pass; `dist/index.html` exists. Initial JS is 36.91 KB raw / 12.53 KB gzip and CSS is 18.98 KB raw / 4.76 KB gzip; the PDF libraries remain lazy chunks.
+- Local browser: `npm run test:e2e -- --reporter=line` — pass; 12/12 Chromium desktop and 390 px mobile scenarios, including keyboard focus, Axe serious/critical 0, persistence, encrypted backup/restore, offline reload/PDF, and service-worker cache cleanup.
+- Local browser smoke: `/opt/fleet/lib/verify-url.sh http://127.0.0.1:4173/ <evidence-dir>` — pass; title, `lang`, one `h1`, `main`, image alt text, labelled controls, and no page/console errors.
+- Live browser: `PLAYWRIGHT_BASE_URL=https://billable-receipt-split.sociobot.in npm run test:e2e -- --reporter=line` — pass; 12/12 desktop and 390 px scenarios.
+- Deployment: `/opt/fleet/lib/deploy-static.sh billable-receipt-split /work/repo/dist` — pass; Azure Static Web Apps deployment `a7c04f95-ef55-4bc7-88d2-d570fa10502a`, custom-domain HTTPS 200. Post-deploy identity comparison matched all 27 served `dist/` files byte-for-byte.
+- Live billing probe: checkout remains HTTP 404 as quoted above; this is the sole S1 release blocker.
+
+## Required next step
+
+The billing owner must register/enable the production `billable-receipt-split` $19 one-time product. Reverify that the exact checkout URL redirects to hosted checkout and that a real returned `?license=` token unlocks the deployed application. Until that external action is complete, the product cannot honestly be marked release-ready.
+
+---
+
 # Billable Split — verification 2 handoff
 
 ## Final verification verdict: FAIL
