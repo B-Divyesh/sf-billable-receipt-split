@@ -1,0 +1,10 @@
+{
+  "slug": "billable-receipt-split",
+  "title": "Billable Split",
+  "territory": "utilities",
+  "user": "A contractor buying materials for several jobs at once who must split one supplier receipt into billable, non-billable, and reimbursable job costs without losing the source record.",
+  "smallest_useful_product": "Offline PWA that stores a receipt image, creates manual line items, allocates each line across jobs with billable flags, and exports per-job CSV/PDF evidence.",
+  "artifact_class": "pwa-offline",
+  "monetization": "one-time",
+  "constraints": "Receipt images can contain payment and tax information; encrypt local backups and allow permanent deletion; allocation export must retain immutable source-image hashes."
+}

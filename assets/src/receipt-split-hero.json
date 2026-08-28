@@ -1,0 +1,8 @@
+{
+  "generator": "Azure AI Foundry factory image deployment via /opt/fleet/lib/gen-image.sh",
+  "date": "2026-08-28",
+  "size": "1536x1024",
+  "quality": "medium",
+  "prompt": "Use case: stylized-concept. Asset type: PWA landing-page hero illustration. A single long cream thermal-paper hardware supplier receipt on a near-black workshop desk breaks into three precise luminous allocation lanes ending in small job folders, seen in clean isometric view. Pixel/demoscene aesthetic, chunky 16-bit pixel clusters, crisp hard edges, limited palette of ink black, receipt cream, phosphor mint, construction amber, and a small amount of cool blue. Practical field-tool mood, subtle bolts and grid marks, no people. Composition leaves calm dark negative space around the object. No readable text, no letters, no numbers, no logos, no watermark, no brands, no gradients, no photorealism, no neon cyberpunk city.",
+  "review": "Accepted: one receipt, three destination folders, no logos/watermarks/readable pseudo-text, palette and pixel treatment match the visual thesis."
+}
