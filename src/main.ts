@@ -5,7 +5,7 @@ import { CHECKOUT_URL, captureReturnedLicense, clearLicense, isOptimisticallyUnl
 import { exportJobPdf } from './pdf';
 import type { CostType, Receipt } from './types';
 import { COST_LABELS } from './types';
-import { cents, csvForJob, download, escapeHtml, jobsFor, money, receiptStatus, safeFilename, sha256, uid } from './utils';
+import { MAX_AMOUNT, cents, csvForJob, download, escapeHtml, isReceiptExportable, jobsFor, money, receiptStatus, safeFilename, sha256, uid, validateReceiptImage } from './utils';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const FREE_RECEIPT_LIMIT = 5;
@@ -71,7 +71,7 @@ function newReceiptDialog(): string {
       <div class="field-grid">
         <label><span>Supplier</span><input name="supplier" autocomplete="organization" required maxlength="80" /></label>
         <label><span>Purchase date</span><input name="purchasedOn" type="date" value="${new Date().toISOString().slice(0, 10)}" required /></label>
-        <label><span>Receipt total</span><input name="total" type="number" inputmode="decimal" min="0.01" step="0.01" required /></label>
+        <label><span>Receipt total</span><input name="total" type="number" inputmode="decimal" min="0.01" max="${MAX_AMOUNT}" step="0.01" required /></label>
         <label><span>Currency</span><select name="currency"><option>USD</option><option>CAD</option><option>GBP</option><option>EUR</option><option>AUD</option><option>INR</option></select></label>
       </div>
       <label><span>Note <span class="optional">optional</span></span><input name="note" maxlength="160" placeholder="PO, card, or context" /></label>
@@ -114,7 +114,7 @@ function dashboard(): string {
       </div>
     </div>
     <figure class="hero-art">
-      <img src="/assets/receipt-split-hero.webp" srcset="/assets/receipt-split-hero-480.webp 480w, /assets/receipt-split-hero.webp 768w" sizes="(max-width: 900px) calc(100vw - 40px), 50vw" width="768" height="512" alt="Pixel-art receipt dividing into three colored job folders on a workshop bench" fetchpriority="high" />
+      <img src="/assets/receipt-split-hero-768-64af65b0.webp" srcset="/assets/receipt-split-hero-480-289a1d9c.webp 480w, /assets/receipt-split-hero-768-64af65b0.webp 768w" sizes="(max-width: 900px) calc(100vw - 40px), 50vw" width="768" height="512" alt="Pixel-art receipt dividing into three colored job folders on a workshop bench" fetchpriority="high" />
       <figcaption><span>Source</span><i></i><span>Allocate</span><i></i><span>Evidence</span></figcaption>
     </figure>
   </section>
@@ -127,7 +127,7 @@ function dashboard(): string {
 function allocationRow(receipt: Receipt, lineId: string, allocation: Receipt['lines'][number]['allocations'][number]): string {
   return `<form class="allocation-row" data-action="edit-allocation" data-line-id="${lineId}" data-allocation-id="${allocation.id}">
     <label><span>Job</span><input name="job" value="${escapeHtml(allocation.job)}" required maxlength="80" /></label>
-    <label><span>Amount</span><input name="amount" type="number" inputmode="decimal" min="0.01" step="0.01" value="${(allocation.amountCents / 100).toFixed(2)}" required /></label>
+    <label><span>Amount</span><input name="amount" type="number" inputmode="decimal" min="0.01" max="${MAX_AMOUNT}" step="0.01" value="${(allocation.amountCents / 100).toFixed(2)}" required /></label>
     <label><span>Status</span><select name="type">${Object.entries(COST_LABELS).map(([value, label]) => `<option value="${value}" ${allocation.type === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
     <button class="button button-small" type="submit">Save</button>
     <button class="icon-button danger" type="button" data-delete-allocation="${allocation.id}" data-line-id="${lineId}" aria-label="Delete ${escapeHtml(allocation.job)} allocation">${icon('trash')}</button>
@@ -136,6 +136,7 @@ function allocationRow(receipt: Receipt, lineId: string, allocation: Receipt['li
 
 function receiptDetail(receipt: Receipt): string {
   const status = receiptStatus(receipt);
+  const exportable = isReceiptExportable(receipt);
   const lineTotal = receipt.lines.reduce((sum, line) => sum + line.amountCents, 0);
   const allJobs = jobsFor(receipt);
   const lines = receipt.lines.map((line, index) => {
@@ -151,14 +152,15 @@ function receiptDetail(receipt: Receipt): string {
       <div class="line-editor" id="line-${line.id}">
         <form class="edit-line" data-action="edit-line" data-line-id="${line.id}">
           <label><span>Description</span><input name="description" value="${escapeHtml(line.description)}" required maxlength="100" /></label>
-          <label><span>Line total</span><input name="amount" type="number" inputmode="decimal" min="0.01" step="0.01" value="${(line.amountCents / 100).toFixed(2)}" required /></label>
+          <label><span>Line total</span><input name="amount" type="number" inputmode="decimal" min="0.01" max="${MAX_AMOUNT}" step="0.01" value="${(line.amountCents / 100).toFixed(2)}" required /></label>
           <button class="button button-small" type="submit">Save line</button>
           <button class="text-button danger-text" type="button" data-delete-line="${line.id}">Delete line</button>
         </form>
+        <p class="form-error line-error" aria-live="assertive"></p>
         ${line.allocations.map((allocation) => allocationRow(receipt, line.id, allocation)).join('')}
         <form class="new-allocation" data-action="add-allocation" data-line-id="${line.id}">
           <label><span>Job</span><input name="job" list="jobs-${receipt.id}" required maxlength="80" placeholder="e.g. Oak Street kitchen" /></label>
-          <label><span>Amount</span><input name="amount" type="number" inputmode="decimal" min="0.01" step="0.01" value="${remaining > 0 ? (remaining / 100).toFixed(2) : ''}" required /></label>
+          <label><span>Amount</span><input name="amount" type="number" inputmode="decimal" min="0.01" max="${MAX_AMOUNT}" step="0.01" value="${remaining > 0 ? (remaining / 100).toFixed(2) : ''}" required /></label>
           <label><span>Status</span><select name="type"><option value="billable">Billable</option><option value="reimbursable">Reimbursable</option><option value="non-billable">Non-billable</option></select></label>
           <button class="button button-secondary" type="submit">Add split</button>
         </form>
@@ -189,17 +191,17 @@ function receiptDetail(receipt: Receipt): string {
         ${receipt.lines.length ? `<ol class="line-list">${lines}</ol>` : '<div class="ledger-empty"><span>01</span><h3>Add the first receipt line</h3><p>Enter each purchased item exactly once, then split it across one or more jobs.</p></div>'}
         <form class="add-line-form" data-action="add-line">
           <label><span>Line description</span><input name="description" required maxlength="100" placeholder="e.g. 12mm plywood sheets" /></label>
-          <label><span>Line total</span><input name="amount" type="number" inputmode="decimal" min="0.01" step="0.01" required placeholder="0.00" /></label>
+          <label><span>Line total</span><input name="amount" type="number" inputmode="decimal" min="0.01" max="${MAX_AMOUNT}" step="0.01" required placeholder="0.00" /></label>
           <button class="button button-primary" type="submit">Add line ${icon('plus')}</button>
         </form>
         <p class="form-error" aria-live="assertive"></p>
       </section>
     </div>
     <section class="export-panel" aria-labelledby="export-title">
-      <div><div class="eyebrow">Evidence packets</div><h2 id="export-title">Export by job</h2><p>Every packet includes the immutable source-image fingerprint.</p></div>
+      <div><div class="eyebrow">Evidence packets</div><h2 id="export-title">Export by job</h2><p>${exportable ? 'Every packet includes the immutable source-image fingerprint.' : 'Balance every line and the source total before exporting evidence.'}</p></div>
       ${allJobs.length ? `<ul class="job-list">${allJobs.map((job) => {
         const total = receipt.lines.flatMap((line) => line.allocations).filter((allocation) => allocation.job === job).reduce((sum, allocation) => sum + allocation.amountCents, 0);
-        return `<li><span><strong>${escapeHtml(job)}</strong><small>${money(total, receipt.currency)} allocated</small></span><button class="button button-secondary" data-export-csv="${escapeHtml(job)}">CSV ${icon('download')}</button><button class="button button-primary" data-export-pdf="${escapeHtml(job)}">PDF ${icon('download')}</button></li>`;
+        return `<li><span><strong>${escapeHtml(job)}</strong><small>${money(total, receipt.currency)} allocated</small></span><button class="button button-secondary" data-export-csv="${escapeHtml(job)}" ${exportable ? '' : 'disabled'}>CSV ${icon('download')}</button><button class="button button-primary" data-export-pdf="${escapeHtml(job)}" ${exportable ? '' : 'disabled'}>PDF ${icon('download')}</button></li>`;
       }).join('')}</ul>` : '<div class="export-empty">Add a job allocation to make its CSV and PDF packet.</div>'}
     </section>
     <details class="history-panel"><summary>Receipt history <span>${receipt.history.length} events</span></summary><ol>${receipt.history.slice(0, 12).map((event) => `<li><time>${new Date(event.at).toLocaleString()}</time>${escapeHtml(event.label)}</li>`).join('')}</ol></details>
@@ -271,22 +273,28 @@ async function createReceipt(form: HTMLFormElement): Promise<void> {
   if (file.size > 20 * 1024 * 1024) { errorFor(form, 'That image is over 20 MB. Choose a smaller photo.'); return; }
   busy = true;
   const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const buttonContent = button?.innerHTML;
   if (button) { button.disabled = true; button.textContent = 'Fingerprinting source…'; }
   try {
+    const mime = await validateReceiptImage(file);
     const now = new Date().toISOString();
     const receipt: Receipt = {
       id: uid(), supplier: String(data.get('supplier')).trim(), purchasedOn: String(data.get('purchasedOn')),
       currency: String(data.get('currency')), totalCents: cents(data.get('total')), note: String(data.get('note') ?? '').trim(),
-      image: { blob: file, filename: file.name, mime: file.type, sha256: await sha256(file) }, lines: [],
+      image: { blob: file, filename: file.name, mime, sha256: await sha256(file) }, lines: [],
       history: [{ id: uid(), at: now, label: 'Source receipt captured and fingerprinted' }], createdAt: now, updatedAt: now,
     };
     await saveReceipt(receipt); receipts = await listReceipts(); activeReceipt = receipt; view = 'receipt'; render(); toast('Source locked. Add its receipt lines.');
   } catch (error) { errorFor(form, error instanceof Error ? error.message : 'The receipt could not be saved.'); }
-  finally { busy = false; }
+  finally {
+    busy = false;
+    if (button && button.isConnected && buttonContent) { button.disabled = false; button.innerHTML = buttonContent; }
+  }
 }
 
 app.addEventListener('click', async (event) => {
   const target = event.target as HTMLElement;
+  if (target.closest('[data-reload]')) { location.reload(); return; }
   const nav = target.closest<HTMLElement>('[data-nav]');
   if (nav) { view = nav.dataset.nav as 'home' | 'settings'; activeReceipt = null; render(); return; }
   if (target.closest('[data-new-receipt]')) {
@@ -315,10 +323,12 @@ app.addEventListener('click', async (event) => {
   }
   const csvButton = target.closest<HTMLElement>('[data-export-csv]');
   if (csvButton?.dataset.exportCsv && activeReceipt) {
+    if (!isReceiptExportable(activeReceipt)) { toast('Balance every line and the source total before exporting.', 'error'); return; }
     const job = csvButton.dataset.exportCsv; download(new Blob([csvForJob(activeReceipt, job)], { type: 'text/csv;charset=utf-8' }), `${safeFilename(job)}-${activeReceipt.purchasedOn}-costs.csv`); toast(`${job} CSV downloaded`); return;
   }
   const pdfButton = target.closest<HTMLButtonElement>('[data-export-pdf]');
   if (pdfButton?.dataset.exportPdf && activeReceipt) {
+    if (!isReceiptExportable(activeReceipt)) { toast('Balance every line and the source total before exporting.', 'error'); return; }
     pdfButton.disabled = true; pdfButton.textContent = 'Building…';
     try { await exportJobPdf(activeReceipt, pdfButton.dataset.exportPdf); toast(`${pdfButton.dataset.exportPdf} PDF downloaded`); } catch { toast('The PDF could not be created. Try the CSV export instead.', 'error'); } finally { render(); }
     return;
@@ -338,7 +348,17 @@ app.addEventListener('submit', async (event) => {
       activeReceipt.lines.push({ id: uid(), description: String(data.get('description')).trim(), amountCents: cents(data.get('amount')), allocations: [] }); await persist('Receipt line added'); return;
     }
     if (action === 'edit-line' && activeReceipt) {
-      const line = activeReceipt.lines.find((item) => item.id === form.dataset.lineId); if (line) { line.description = String(data.get('description')).trim(); line.amountCents = cents(data.get('amount')); await persist('Receipt line updated'); } return;
+      const line = activeReceipt.lines.find((item) => item.id === form.dataset.lineId);
+      if (line) {
+        const nextAmount = cents(data.get('amount'));
+        const allocated = line.allocations.reduce((sum, item) => sum + item.amountCents, 0);
+        if (nextAmount < allocated) {
+          errorFor(form, `Line total cannot be less than its ${money(allocated, activeReceipt.currency)} of allocations. Reconcile the splits first.`);
+          return;
+        }
+        line.description = String(data.get('description')).trim(); line.amountCents = nextAmount; await persist('Receipt line updated');
+      }
+      return;
     }
     if (action === 'add-allocation' && activeReceipt) {
       const line = activeReceipt.lines.find((item) => item.id === form.dataset.lineId);
@@ -367,7 +387,7 @@ window.addEventListener('online', () => { render(); toast('Back online'); void v
 window.addEventListener('offline', () => { render(); toast('Offline mode is ready'); });
 
 async function start(): Promise<void> {
-  try { receipts = await listReceipts(); } catch (error) { app.innerHTML = shell(`<section class="fatal"><h1>Local storage is unavailable</h1><p>${escapeHtml(error instanceof Error ? error.message : 'Reload in a standard browser window.')}</p><button class="button button-primary" onclick="location.reload()">Try again</button></section>`); return; }
+  try { receipts = await listReceipts(); } catch (error) { app.innerHTML = shell(`<section class="fatal"><h1>Local storage is unavailable</h1><p>${escapeHtml(error instanceof Error ? error.message : 'Reload in a standard browser window.')}</p><button class="button button-primary" data-reload>Try again</button></section>`); return; }
   render();
   void verifyLicense().then((verdict) => { if (verdict && verdict.valid !== unlocked) { unlocked = verdict.valid; render(); if (!verdict.valid) toast('License no longer active', 'error'); } });
   if ('serviceWorker' in navigator) {

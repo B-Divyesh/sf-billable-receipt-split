@@ -44,12 +44,12 @@ All ordinary text/background pairings target WCAG AA (4.5:1 or better); state is
 
 ## Asset plan and provenance
 
-### `receipt-split-hero.webp`
+### `receipt-split-hero-768-64af65b0.webp`
 
 - Purpose: a compact, explanatory landing/empty-state illustration showing one physical supplier receipt resolving into three job-cost lanes.
 - Prompt sheet / final prompt: “Use case: stylized-concept. Asset type: PWA landing-page hero illustration. A single long cream thermal-paper hardware supplier receipt on a near-black workshop desk breaks into three precise luminous allocation lanes ending in small job folders, seen in clean isometric view. Pixel/demoscene aesthetic, chunky 16-bit pixel clusters, crisp hard edges, limited palette of ink black, receipt cream, phosphor mint, construction amber, and a small amount of cool blue. Practical field-tool mood, subtle bolts and grid marks, no people. Composition leaves calm dark negative space around the object. No readable text, no letters, no numbers, no logos, no watermark, no brands, no gradients, no photorealism, no neon cyberpunk city.”
 - Generator: Azure AI Foundry factory image deployment via `/opt/fleet/lib/gen-image.sh`, generated 2026-08-28. Original for this product; no reference image or third-party asset.
 - Review checklist: reject readable pseudo-text, logos, branded hardware, muddy edges, extra receipts, or colors outside the palette.
-- Delivery: source PNG and prompt sidecar in `assets/src/`; 768px and 480px responsive WebP files in `public/assets/` (25 KB and 12 KB), explicit dimensions in markup.
+- Delivery: source PNG and prompt sidecar in `assets/src/`; content-hashed 768px and 480px responsive WebP files in `public/assets/` (25 KB and 12 KB), explicit dimensions in markup.
 
 App icons and UI glyphs are hand-authored SVG/geometric CSS using the same pixel grid. No stock art, third-party icons, CDN fonts, or external runtime assets.

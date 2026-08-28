@@ -1,5 +1,11 @@
-const VERSION = 'billable-split-v8';
-const SHELL = ['/', '/offline.html', '/manifest.webmanifest', '/asset-manifest.json', '/assets/app.js', '/assets/app.css', '/assets/receipt-split-hero-480.webp', '/assets/receipt-split-hero.webp', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png'];
+const CACHE_PREFIX = 'billable-split-';
+const VERSION = `${CACHE_PREFIX}v10`;
+const SHELL = ['/', '/offline.html', '/manifest.webmanifest', '/asset-manifest.json', '/assets/receipt-split-hero-480-289a1d9c.webp', '/assets/receipt-split-hero-768-64af65b0.webp', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png'];
+
+async function deleteOldCaches() {
+  const keys = await caches.keys();
+  await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== VERSION).map((key) => caches.delete(key)));
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -25,11 +31,12 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== VERSION).map((key) => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(deleteOldCaches().then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  event.waitUntil(deleteOldCaches());
   const url = new URL(event.request.url);
   if (url.origin !== location.origin) return;
   if (event.request.mode === 'navigate') {

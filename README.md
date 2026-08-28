@@ -32,8 +32,10 @@ The development server prints its local URL. Receipt data stays in that originâ€
 
 ```sh
 npm test          # unit tests
+npm run lint      # static lint checks
+npx tsc --noEmit  # strict type check
 npm run build     # exact production build command; writes dist/
-npm run test:e2e  # production build + Playwright mobile/offline/Axe tests
+npm run test:e2e  # production build + Playwright desktop/390px/offline/Axe tests
 ```
 
 Playwright is pinned to 1.58.2. Its Chromium browser must be available; in the factory worker it is supplied through `PLAYWRIGHT_BROWSERS_PATH`.
