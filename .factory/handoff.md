@@ -1,21 +1,32 @@
-# Billable Split — review 1 handoff
+# Billable Split — polish 1 handoff
 
 ## Result
 
-Independent adversarial first-read review completed for work order `billable-receipt-split-review-1`.
+Delivered and deployed repair commit `70124d3dab40201c06fc162589188846c9d70fe8` for work order `billable-receipt-split-polish-1`.
 
-**Verdict: FAIL.** The review found 24 findings, including blocking failures for first-screen audience clarity, the absent sample-data demo and sandbox, the missing `.factory/claims.json`/claim tests, unlisted landing claims, and missing real routing/404/back/focus behaviour.
+The landing now names the contractor job, has a one-click isolated demo, documented claim registry/tests, real routes and 404, complete route metadata, shared legal navigation, plain-language README, and responsive demo controls. Demo data uses `demo:billable-split`; real data remains in `billable-split`.
 
-No product code was modified. The review report is in `.factory/review-1.md`.
+Live: <https://billable-receipt-split.sociobot.in> · Demo: <https://billable-receipt-split.sociobot.in/demo>
 
-## Verification performed
+## Verification
 
-- Opened the live product from fresh Chromium contexts at 390 × 844 and 1440 × 1000; inspected initial visible content, console errors, requests, DOM metadata, controls, storage, and direct `/demo` behaviour.
-- Checked `/`, `/demo`, `/privacy/`, `/terms/`, `/404`, manifest, robots, sitemap, headers, and source route implementation.
-- Ran `npm ci`, `npm test` (10 passed), `npm run build`, `npm run test:e2e -- --reporter=line` (12 passed; Playwright status `passed`), and `npm run test:release` (passed).
-- Read all earlier verification/handoff history. Rechecked every documented earlier defect in live behaviour and/or current regression coverage; none was found to be regressed.
-- Confirmed the prior production verification rate-limit repair with a fresh 35-way burst: 30 × 200 and 5 × 429; a limited response included `Retry-After: 0`.
+- Fresh clone `/tmp/billable-clean.sg2X7K`: `npm ci`, `npm test` (10/10), `npm run build`, then every individual command from `.factory/claims.json` passed on desktop and 390 px.
+- Local: `npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run build`, `npm run test:e2e -- --reporter=line` — 26/26 Playwright tests passed. The suite includes Axe serious/critical checks, keyboard/dialog behavior, responsive targets, privacy requests, offline reload, PDF/CSV, encryption, limits, routing, and service-worker cleanup.
+- Live: `PLAYWRIGHT_BASE_URL=https://billable-receipt-split.sociobot.in npm run test:e2e -- --reporter=line` — 26/26 passed.
+- Live smoke: `/opt/fleet/lib/verify-url.sh` produced `.factory/evidence/polish-1/verify.json` with 701 ms cold load, zero console errors, title/lang/main/one-h1/alt checks all passing. Screenshots: `.factory/evidence/polish-1/screenshot-desktop.png`, `.factory/evidence/polish-1/screenshot-mobile.png`, and `.factory/evidence/polish-1/live-demo-mobile.png`.
+- Live production billing contract: `npm run test:release` passed.
+- Lighthouse mobile report: `.factory/evidence/polish-1/lighthouse.json` recorded 100 performance, 100 accessibility, 100 best practices, and 100 SEO. (Chrome exited after writing the report; all category scores are present.)
+
+## How to run
+
+```sh
+npm ci
+npm run dev
+npm test
+npm run build
+npm run test:e2e
+```
 
 ## Known gaps / next steps
 
-Implement every finding in `.factory/review-1.md`, especially F-1-1 through F-1-8. Then create claim-tagged tests that begin at the isolated demo entry point and rerun this entire review checklist from a fresh browser context.
+None. The product is static and deploys from `dist/`; no server-side product endpoint is owned by this repository.
