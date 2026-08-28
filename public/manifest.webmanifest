@@ -1,0 +1,18 @@
+{
+  "id": "/?source=install",
+  "name": "Billable Split",
+  "short_name": "Billable Split",
+  "description": "Split supplier receipts across jobs and export evidence offline.",
+  "start_url": "/?v=1",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0d0c",
+  "theme_color": "#0b0d0c",
+  "orientation": "any",
+  "categories": ["business", "finance", "utilities"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

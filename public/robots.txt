@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://billable-receipt-split.sociobot.in/sitemap.xml
