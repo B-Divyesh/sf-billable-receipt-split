@@ -1,6 +1,7 @@
 import './styles.css';
 import { createEncryptedBackup, readEncryptedBackup } from './backup';
-import { deleteReceipt, getReceipt, listReceipts, replaceAllReceipts, saveReceipt } from './db';
+import { clearReceipts, deleteReceipt, getReceipt, listReceipts, replaceAllReceipts, saveReceipt, useStorageNamespace } from './db';
+import { seedDemo } from './demo';
 import { CHECKOUT_URL, captureReturnedLicense, clearLicense, isOptimisticallyUnlocked, storeLicense, verifyLicense } from './license';
 import { exportJobPdf } from './pdf';
 import type { CostType, Receipt } from './types';
@@ -11,10 +12,11 @@ const app = document.querySelector<HTMLDivElement>('#app')!;
 const FREE_RECEIPT_LIMIT = 5;
 let receipts: Receipt[] = [];
 let activeReceipt: Receipt | null = null;
-let view: 'home' | 'receipt' | 'settings' = 'home';
+let view: 'home' | 'receipt' | 'settings' | 'not-found' = 'home';
 let objectUrl: string | null = null;
 let unlocked = isOptimisticallyUnlocked();
 let busy = false;
+let demoMode = false;
 
 captureReturnedLicense();
 unlocked = isOptimisticallyUnlocked();
@@ -32,25 +34,57 @@ function icon(name: 'mark' | 'plus' | 'back' | 'download' | 'shield' | 'trash' |
   return `<svg aria-hidden="true" viewBox="0 0 30 30">${paths[name]}</svg>`;
 }
 
+function routeForCurrentView(): string {
+  if (view === 'settings') return demoMode ? '/demo/settings' : '/settings';
+  if (view === 'receipt' && activeReceipt) return `/receipts/${encodeURIComponent(activeReceipt.id)}`;
+  return demoMode ? '/demo' : '/';
+}
+
+function navigate(path: string, replace = false): void {
+  const url = new URL(path, location.origin);
+  if (!replace && `${location.pathname}${location.search}` !== `${url.pathname}${url.search}`) history.pushState({}, '', `${url.pathname}${url.search}`);
+  void loadRoute();
+}
+
+function applyMetadata(): void {
+  const pathname = location.pathname;
+  const isDemo = demoMode || pathname === '/demo';
+  const page = view === 'settings' ? ['Data and license — Billable Split', 'Back up receipt data or restore a purchase license.']
+    : view === 'receipt' && activeReceipt ? [`${activeReceipt.supplier} — Billable Split`, 'Split this supplier receipt between jobs and export job costs.']
+    : view === 'not-found' ? ['Page not found — Billable Split', 'The page you requested is not available.']
+    : isDemo ? ['Demo — Billable Split', 'Try a completed supplier receipt split with sample data.']
+    : ['Billable Split — split receipt costs by job', 'Split one supplier receipt across jobs and export job cost records.'];
+  document.title = page[0];
+  document.querySelector('meta[name="description"]')?.setAttribute('content', page[1]);
+  document.querySelector('link[rel="canonical"]')?.setAttribute('href', `https://billable-receipt-split.sociobot.in${pathname}`);
+  document.querySelector('meta[property="og:title"]')?.setAttribute('content', page[0]);
+  document.querySelector('meta[property="og:description"]')?.setAttribute('content', page[1]);
+  document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', page[0]);
+  document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', page[1]);
+}
+
 function shell(content: string): string {
   const offline = navigator.onLine ? '' : '<div class="offline-bar" role="status">Offline mode · everything here still works</div>';
   return `
     ${offline}
     <header class="app-header">
-      <button class="wordmark" data-nav="home" aria-label="Billable Split home">
+      <a class="wordmark" href="/" data-route aria-label="Billable Split home">
         <span class="pixel-mark">${icon('mark')}</span><span>Billable<br><b>Split</b></span>
-      </button>
+      </a>
       <nav aria-label="Primary navigation">
-        <button class="nav-button ${view === 'home' ? 'is-current' : ''}" data-nav="home">Receipts</button>
-        <button class="nav-button ${view === 'settings' ? 'is-current' : ''}" data-nav="settings">Data & license</button>
+        <a class="nav-button ${view === 'home' && !demoMode ? 'is-current' : ''}" href="/" data-route>Receipts</a>
+        <a class="nav-button ${demoMode ? 'is-current' : ''}" href="/demo" data-route>Demo</a>
+        <a class="nav-button ${view === 'settings' ? 'is-current' : ''}" href="${demoMode ? '/demo/settings' : '/settings'}" data-route>Data & license</a>
+        <a class="nav-button" href="/privacy/">Privacy</a>
       </nav>
     </header>
-    <main id="main">${content}</main>
+    ${demoMode ? '<aside class="demo-banner" aria-label="Demo controls"><strong>Demo — sample data, nothing is saved</strong><span><button class="text-button" data-reset-demo>Reset demo</button><button class="text-button" data-start-real>Start for real</button></span></aside>' : ''}
+    <main id="main" tabindex="-1">${content}</main>
     <footer>
-      <span>Private by design · data stays on this device</span>
-      <span><a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a> · Generated illustration</span>
+      <span>Receipt data stays in this browser. Purchase and license checks contact Sociobot only when you choose them.</span>
+      <span><a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a> · <a href="https://sociobot.in" rel="external">Built by Param Factory</a> · v1.1.0</span>
     </footer>
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="route-announcement" class="sr-only" aria-live="polite"></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
     ${newReceiptDialog()}
   `;
 }
@@ -105,22 +139,23 @@ function dashboard(): string {
   }).join('');
   return `<section class="dashboard">
     <div class="hero-copy">
-      <div class="eyebrow"><span class="signal"></span> Offline job-cost desk</div>
-      <h1>One receipt.<br><span>Every job accounted for.</span></h1>
-      <p>Keep the source photo, split every line across jobs, then hand over clean CSV and PDF evidence.</p>
+      <div class="eyebrow"><span class="signal"></span> Receipt costs for several jobs</div>
+      <h1>Split one supplier receipt by job</h1>
+      <p>For contractors who buy materials for several jobs and need billable cost records.</p>
       <div class="hero-actions">
-        <button class="button button-primary" data-new-receipt>Add a receipt ${icon('plus')}</button>
-        <span>${unlocked ? 'Unlimited archive unlocked' : `${Math.max(0, FREE_RECEIPT_LIMIT - receipts.length)} free receipt slots left`}</span>
+        <a class="button button-primary" href="/demo" data-route>Try it with sample data ${icon('plus')}</a>
+        <span>See a completed split and exports.</span>
       </div>
+      <ul class="hero-facts"><li>Receipt data stays in this browser.</li><li>Works offline after the first visit.</li><li>Five receipts are free; $19 removes the limit.</li></ul>
     </div>
     <figure class="hero-art">
       <img src="/assets/receipt-split-hero-768-64af65b0.webp" srcset="/assets/receipt-split-hero-480-289a1d9c.webp 480w, /assets/receipt-split-hero-768-64af65b0.webp 768w" sizes="(max-width: 900px) calc(100vw - 40px), 50vw" width="768" height="512" alt="Pixel-art receipt dividing into three colored job folders on a workshop bench" fetchpriority="high" />
-      <figcaption><span>Source</span><i></i><span>Allocate</span><i></i><span>Evidence</span></figcaption>
+      <figcaption><span>Source receipt</span><i></i><span>Split by job</span><i></i><span>Export records</span></figcaption>
     </figure>
   </section>
   <section class="receipt-index" aria-labelledby="receipts-title">
-    <div class="section-heading"><div><div class="eyebrow">Local archive / ${String(receipts.length).padStart(2, '0')}</div><h2 id="receipts-title">Recent receipts</h2></div>${receipts.length ? '<button class="button button-quiet" data-new-receipt>Add receipt</button>' : ''}</div>
-    ${receipts.length ? `<ul class="receipt-list">${cards}</ul>` : `<div class="empty-state"><span class="empty-pixel">＋</span><div><h3>No receipts on this device</h3><p>Start with a supplier receipt. Its image and every split stay in your browser, even offline.</p></div><button class="button button-primary" data-new-receipt>Capture first receipt</button></div>`}
+    <div class="section-heading"><div><div class="eyebrow">Saved receipts: ${receipts.length}</div><h2 id="receipts-title">Recent receipts</h2></div>${receipts.length ? '<button class="button button-quiet" data-new-receipt>Add receipt</button>' : ''}</div>
+    ${receipts.length ? `<ul class="receipt-list">${cards}</ul>` : `<div class="empty-state"><span class="empty-pixel">＋</span><div><h3>No receipts saved yet</h3><p>Add a supplier receipt to split its lines between jobs.</p></div><button class="button button-primary" data-new-receipt>Add a receipt</button></div>`}
   </section>`;
 }
 
@@ -171,7 +206,7 @@ function receiptDetail(receipt: Receipt): string {
   objectUrl = URL.createObjectURL(receipt.image.blob);
   return `<section class="receipt-workspace">
     <div class="workspace-top">
-      <button class="back-button" data-nav="home">${icon('back')} All receipts</button>
+      <a class="back-button" href="${demoMode ? '/demo/list' : '/'}" data-route>${icon('back')} All receipts</a>
       ${stepRail(allJobs.length ? 3 : receipt.lines.length ? 2 : 1)}
       <span class="status ${status.className}"><i></i>${status.label}</span>
     </div>
@@ -221,17 +256,26 @@ function settings(): string {
       </section>
     </div>
     <section class="license-panel" aria-labelledby="license-title">
-      <div><div class="eyebrow">One-time license</div><h2 id="license-title">${unlocked ? 'Unlimited archive unlocked' : 'Keep every receipt'}</h2><p>${unlocked ? 'This device can create an unlimited receipt archive. CSV, PDF, backup, and deletion always remain available.' : `The free version includes ${FREE_RECEIPT_LIMIT} complete receipts with all exports. Pay $19 once to remove the archive limit on your devices.`}</p></div>
+      <div><div class="eyebrow">One-time license</div><h2 id="license-title">${unlocked ? 'Unlimited archive unlocked' : 'Keep every receipt'}</h2><p>${unlocked ? 'This device can create an unlimited receipt archive. CSV, PDF, backup, and deletion always remain available.' : `The free version includes ${FREE_RECEIPT_LIMIT} complete receipts with all exports. Pay $19 once to remove the archive limit on your devices.`}</p>${!unlocked && receipts.length >= FREE_RECEIPT_LIMIT ? '<p class="form-error">The free archive is full. Export or delete a receipt, or unlock unlimited storage.</p>' : ''}</div>
       ${unlocked ? '<button class="button button-quiet" data-remove-license>Remove license from this device</button>' : `<div class="license-actions"><a class="button button-primary" href="${CHECKOUT_URL}">Buy once · $19</a><form data-action="restore-license"><label><span>Have a license?</span><input name="license" autocomplete="off" required placeholder="Paste license token" /></label><button class="button button-secondary" type="submit">Verify & unlock</button><p class="form-error" aria-live="assertive"></p></form></div>`}
       <small>Sociobot / Dodo is the merchant of record. Refunds are handled there and revoke the license. <a href="/terms/">Terms</a> apply.</small>
     </section>
   </section>`;
 }
 
+function notFound(): string {
+  return `<section class="fatal"><div class="eyebrow">404</div><h1>Page not found</h1><p>This address does not point to a Billable Split page.</p><a class="button button-primary" href="/" data-route>Go to receipts</a></section>`;
+}
+
 function render(): void {
   if (objectUrl && view !== 'receipt') { URL.revokeObjectURL(objectUrl); objectUrl = null; }
-  const content = view === 'receipt' && activeReceipt ? receiptDetail(activeReceipt) : view === 'settings' ? settings() : dashboard();
+  const content = view === 'receipt' && activeReceipt ? receiptDetail(activeReceipt) : view === 'settings' ? settings() : view === 'not-found' ? notFound() : dashboard();
   app.innerHTML = shell(content);
+  applyMetadata();
+  const heading = document.querySelector<HTMLElement>('main h1');
+  requestAnimationFrame(() => heading?.focus());
+  const announcement = document.querySelector<HTMLElement>('#route-announcement');
+  if (announcement && heading) announcement.textContent = heading.textContent ?? '';
 }
 
 function toast(message: string, tone: 'normal' | 'error' = 'normal'): void {
@@ -265,7 +309,7 @@ async function persist(label: string): Promise<void> {
 async function createReceipt(form: HTMLFormElement): Promise<void> {
   if (busy) return;
   if (!unlocked && receipts.length >= FREE_RECEIPT_LIMIT) {
-    view = 'settings'; render(); toast('The free archive is full. Export or delete a receipt, or unlock unlimited storage.', 'error'); return;
+    navigate(demoMode ? '/demo/settings' : '/settings'); toast('The free archive is full. Export or delete a receipt, or unlock unlimited storage.', 'error'); return;
   }
   const data = new FormData(form);
   const file = data.get('image');
@@ -284,7 +328,7 @@ async function createReceipt(form: HTMLFormElement): Promise<void> {
       image: { blob: file, filename: file.name, mime, sha256: await sha256(file) }, lines: [],
       history: [{ id: uid(), at: now, label: 'Source receipt captured and fingerprinted' }], createdAt: now, updatedAt: now,
     };
-    await saveReceipt(receipt); receipts = await listReceipts(); activeReceipt = receipt; view = 'receipt'; render(); toast('Source locked. Add its receipt lines.');
+    await saveReceipt(receipt); receipts = await listReceipts(); activeReceipt = receipt; view = 'receipt'; navigate(routeForCurrentView()); toast('Source locked. Add its receipt lines.');
   } catch (error) { errorFor(form, error instanceof Error ? error.message : 'The receipt could not be saved.'); }
   finally {
     busy = false;
@@ -295,15 +339,19 @@ async function createReceipt(form: HTMLFormElement): Promise<void> {
 app.addEventListener('click', async (event) => {
   const target = event.target as HTMLElement;
   if (target.closest('[data-reload]')) { location.reload(); return; }
+  const routeLink = target.closest<HTMLAnchorElement>('[data-route]');
+  if (routeLink) { event.preventDefault(); navigate(routeLink.getAttribute('href') ?? '/'); return; }
   const nav = target.closest<HTMLElement>('[data-nav]');
-  if (nav) { view = nav.dataset.nav as 'home' | 'settings'; activeReceipt = null; render(); return; }
+  if (nav) { navigate(nav.dataset.nav === 'settings' ? (demoMode ? '/demo/settings' : '/settings') : '/'); return; }
+  if (target.closest('[data-reset-demo]')) { receipts = await seedDemo(true); activeReceipt = receipts[0] ?? null; view = 'receipt'; navigate(routeForCurrentView(), true); toast('Sample data reset'); return; }
+  if (target.closest('[data-start-real]')) { await clearReceipts(); demoMode = false; useStorageNamespace('real'); receipts = await listReceipts(); activeReceipt = null; view = 'home'; navigate('/', true); toast('Demo data discarded. You can now add a real receipt.'); return; }
   if (target.closest('[data-new-receipt]')) {
-    if (!unlocked && receipts.length >= FREE_RECEIPT_LIMIT) { view = 'settings'; render(); toast('The free archive is full. Unlock unlimited receipts or delete one.', 'error'); }
+    if (!unlocked && receipts.length >= FREE_RECEIPT_LIMIT) { navigate(demoMode ? '/demo/settings' : '/settings'); toast('The free archive is full. Unlock unlimited receipts or delete one.', 'error'); }
     else document.querySelector<HTMLDialogElement>('#new-receipt-dialog')?.showModal();
     return;
   }
   const open = target.closest<HTMLElement>('[data-open-receipt]');
-  if (open?.dataset.openReceipt) { activeReceipt = await getReceipt(open.dataset.openReceipt) ?? null; if (activeReceipt) { view = 'receipt'; render(); } return; }
+  if (open?.dataset.openReceipt) { activeReceipt = await getReceipt(open.dataset.openReceipt) ?? null; if (activeReceipt) { view = 'receipt'; navigate(routeForCurrentView()); } return; }
   const toggle = target.closest<HTMLButtonElement>('[data-toggle-line]');
   if (toggle) { const editor = document.querySelector<HTMLElement>(`#line-${toggle.dataset.toggleLine}`); if (editor) { editor.hidden = !editor.hidden; toggle.setAttribute('aria-expanded', String(!editor.hidden)); toggle.textContent = editor.hidden ? 'Edit split' : 'Hide split'; } return; }
   const deleteLineButton = target.closest<HTMLElement>('[data-delete-line]');
@@ -318,7 +366,7 @@ app.addEventListener('click', async (event) => {
   if (target.closest('[data-delete-receipt]') && activeReceipt) {
     const supplier = activeReceipt.supplier;
     if (confirm(`Permanently delete the ${supplier} receipt, its source image, and every allocation? This cannot be undone.`)) {
-      await deleteReceipt(activeReceipt.id); receipts = await listReceipts(); activeReceipt = null; view = 'home'; render(); toast(`${supplier} receipt permanently deleted`);
+      await deleteReceipt(activeReceipt.id); receipts = await listReceipts(); activeReceipt = null; view = 'home'; navigate(routeForCurrentView()); toast(`${supplier} receipt permanently deleted`);
     } return;
   }
   const csvButton = target.closest<HTMLElement>('[data-export-csv]');
@@ -373,7 +421,7 @@ app.addEventListener('submit', async (event) => {
       const file = data.get('backup'); if (!(file instanceof File)) return;
       const restored = await readEncryptedBackup(file, String(data.get('password')));
       if (!confirm(`Replace this device's ${receipts.length} receipt(s) with the ${restored.length} receipt(s) in this backup?`)) return;
-      await replaceAllReceipts(restored); receipts = await listReceipts(); view = 'home'; render(); toast(`${restored.length} receipts restored`); return;
+      await replaceAllReceipts(restored); receipts = await listReceipts(); view = 'home'; navigate(routeForCurrentView()); toast(`${restored.length} receipts restored`); return;
     }
     if (action === 'restore-license') {
       storeLicense(String(data.get('license'))); const verdict = await verifyLicense(true);
@@ -385,10 +433,27 @@ app.addEventListener('submit', async (event) => {
 
 window.addEventListener('online', () => { render(); toast('Back online'); void verifyLicense().then((verdict) => { if (verdict && verdict.valid !== unlocked) { unlocked = verdict.valid; render(); if (!verdict.valid) toast('License no longer active', 'error'); } }); });
 window.addEventListener('offline', () => { render(); toast('Offline mode is ready'); });
+window.addEventListener('popstate', () => { void loadRoute(); });
+
+async function loadRoute(): Promise<void> {
+  const path = location.pathname.replace(/\/$/, '') || '/';
+  const wantsDemo = path === '/demo' || path === '/demo/list' || path === '/demo/settings' || new URLSearchParams(location.search).get('demo') === '1';
+  demoMode = wantsDemo;
+  useStorageNamespace(demoMode ? 'demo' : 'real');
+  if (demoMode) await seedDemo();
+  receipts = await listReceipts();
+  activeReceipt = null;
+  if (path === '/' || path === '/demo' || path === '/demo/list') {
+    if (demoMode && path !== '/demo/list') { activeReceipt = receipts[0] ?? null; view = activeReceipt ? 'receipt' : 'home'; }
+    else view = 'home';
+  } else if (path === '/settings' || path === '/demo/settings') view = 'settings';
+  else if (path.startsWith('/receipts/')) { activeReceipt = await getReceipt(decodeURIComponent(path.slice('/receipts/'.length))) ?? null; view = activeReceipt ? 'receipt' : 'not-found'; }
+  else view = 'not-found';
+  render();
+}
 
 async function start(): Promise<void> {
-  try { receipts = await listReceipts(); } catch (error) { app.innerHTML = shell(`<section class="fatal"><h1>Local storage is unavailable</h1><p>${escapeHtml(error instanceof Error ? error.message : 'Reload in a standard browser window.')}</p><button class="button button-primary" data-reload>Try again</button></section>`); return; }
-  render();
+  try { await loadRoute(); } catch (error) { app.innerHTML = shell(`<section class="fatal"><h1>Local storage is unavailable</h1><p>${escapeHtml(error instanceof Error ? error.message : 'Reload in a standard browser window.')}</p><button class="button button-primary" data-reload>Try again</button></section>`); return; }
   void verifyLicense().then((verdict) => { if (verdict && verdict.valid !== unlocked) { unlocked = verdict.valid; render(); if (!verdict.valid) toast('License no longer active', 'error'); } });
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then((registration) => {

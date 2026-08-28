@@ -31,14 +31,14 @@ test('creates, splits, persists, and works offline', async ({ page, context }, t
   await page.getByRole('button', { name: /CSV/ }).click();
   expect((await csvDownload).suggestedFilename()).toContain('oak-street-kitchen');
   await page.reload();
-  await page.getByRole('button', { name: /North Yard Supply/ }).click();
+  await expect(page.getByRole('heading', { name: 'North Yard Supply' })).toBeVisible();
   await expect(page.getByText('Oak Street kitchen').first()).toBeVisible();
   await page.goto('/');
   await page.waitForFunction(() => navigator.serviceWorker?.controller !== null);
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByText(/Offline mode/).first()).toBeVisible();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('One receipt');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Split one supplier receipt by job');
   await page.getByRole('button', { name: /North Yard Supply/ }).click();
   const pdfDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: /PDF/ }).click();
@@ -57,8 +57,8 @@ test('downloads an encrypted local backup', async ({ page }) => {
   await page.getByLabel('Supplier').fill('Backup Supply');
   await page.getByLabel('Receipt total').fill('10.00');
   await page.getByRole('button', { name: /Fingerprint & continue/ }).click();
-  await page.getByRole('button', { name: 'All receipts' }).click();
-  await page.getByRole('button', { name: 'Data & license' }).click();
+  await page.getByRole('link', { name: 'All receipts' }).click();
+  await page.getByRole('link', { name: 'Data & license' }).click();
   await expect(page.getByRole('link', { name: 'Buy once · $19' })).toHaveAttribute('href', 'https://api.sociobot.in/api/v1/products/billable-receipt-split/checkout');
   await page.getByRole('region', { name: 'Encrypted backup' }).getByLabel('Backup password').fill('correct-horse-battery');
   const download = page.waitForEvent('download');
@@ -67,12 +67,12 @@ test('downloads an encrypted local backup', async ({ page }) => {
   expect(backup.suggestedFilename()).toMatch(/\.billsplit$/);
   const backupPath = await backup.path();
   expect(backupPath).not.toBeNull();
-  await page.getByRole('button', { name: 'Billable Split home' }).click();
+  await page.getByRole('link', { name: 'Billable Split home' }).click();
   await page.getByRole('button', { name: /Backup Supply/ }).click();
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Delete permanently' }).click();
-  await expect(page.getByText('No receipts on this device')).toBeVisible();
-  await page.getByRole('button', { name: 'Data & license' }).click();
+  await expect(page.getByText('No receipts saved yet')).toBeVisible();
+  await page.getByRole('link', { name: 'Data & license' }).click();
   const restore = page.getByRole('region', { name: 'Restore backup' });
   await restore.getByLabel('Backup file').setInputFiles(backupPath!);
   await restore.getByLabel('Backup password').fill('correct-horse-battery');
@@ -88,11 +88,11 @@ test('has keyboard-visible landmarks and legal links', async ({ page }) => {
   await expect(page.locator('img:not([alt])')).toHaveCount(0);
   await page.keyboard.press('Tab');
   await expect(page.getByText('Skip to main content')).toBeFocused();
-  await expect(page.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy/');
+  await expect(page.getByLabel('Primary navigation').getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy/');
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
 
-  for (const target of [page.getByRole('button', { name: 'Billable Split home' }), page.getByRole('link', { name: 'Privacy' }), page.getByRole('link', { name: 'Terms' })]) {
+  for (const target of [page.getByRole('link', { name: 'Billable Split home' }), page.getByRole('contentinfo').getByRole('link', { name: 'Privacy' }), page.getByRole('link', { name: 'Terms' })]) {
     const box = await target.boundingBox();
     expect(box?.width).toBeGreaterThanOrEqual(44);
     expect(box?.height).toBeGreaterThanOrEqual(44);
@@ -105,7 +105,7 @@ test('has keyboard-visible landmarks and legal links', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(openDialog).toBeFocused();
 
-  await page.getByRole('button', { name: 'Data & license' }).click();
+  await page.getByRole('link', { name: 'Data & license' }).click();
   const settingsResults = await new AxeBuilder({ page }).analyze();
   expect(settingsResults.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
   await page.goto('/privacy/');
@@ -176,7 +176,7 @@ test('rejects a line total below its allocations and disables exports for legacy
   await editLine.getByRole('button', { name: 'Save line' }).click();
   await expect(page.getByText('Line total cannot be less than its $60.00 of allocations. Reconcile the splits first.')).toBeVisible();
 
-  await page.getByRole('button', { name: 'All receipts' }).click();
+  await page.getByRole('link', { name: 'All receipts' }).click();
   await page.getByRole('button', { name: /Integrity Supply/ }).click();
   await expect(page.locator('form.edit-line').first().getByLabel('Line total')).toHaveValue('60.00');
 
@@ -201,7 +201,7 @@ test('rejects a line total below its allocations and disables exports for legacy
     database.close();
   });
   await page.reload();
-  await page.getByRole('button', { name: /Integrity Supply/ }).click();
+  await expect(page.getByRole('heading', { name: 'Integrity Supply' })).toBeVisible();
   await expect(page.getByText('Invalid · $20.00 over lines').first()).toBeVisible();
   await expect(page.getByText('Balance every line and the source total before exporting evidence.')).toBeVisible();
   await expect(page.getByRole('button', { name: /CSV/ }).first()).toBeDisabled();
@@ -214,5 +214,5 @@ test('removes superseded service-worker caches', async ({ page }) => {
   await page.evaluate(async () => { await caches.open('billable-split-v8'); });
   await expect.poll(() => page.evaluate(() => caches.keys())).toContain('billable-split-v8');
   await page.reload();
-  await expect.poll(() => page.evaluate(() => caches.keys())).toEqual(['billable-split-v10']);
+  await expect.poll(() => page.evaluate(() => caches.keys())).toEqual(['billable-split-v11']);
 });

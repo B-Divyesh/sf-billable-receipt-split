@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'billable-split-';
-const VERSION = `${CACHE_PREFIX}v10`;
-const SHELL = ['/', '/offline.html', '/manifest.webmanifest', '/asset-manifest.json', '/assets/receipt-split-hero-480-289a1d9c.webp', '/assets/receipt-split-hero-768-64af65b0.webp', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png'];
+const VERSION = `${CACHE_PREFIX}v11`;
+const SHELL = ['/', '/demo', '/offline.html', '/manifest.webmanifest', '/asset-manifest.json', '/assets/receipt-split-hero-480-289a1d9c.webp', '/assets/receipt-split-hero-768-64af65b0.webp', '/assets/billable-split-social.png', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png'];
 
 async function deleteOldCaches() {
   const keys = await caches.keys();
