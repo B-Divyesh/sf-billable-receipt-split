@@ -9,7 +9,8 @@
     "lint": "oxlint src tests vite.config.ts playwright.config.ts vitest.config.ts",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:release": "node tests/release-check.mjs"
   },
   "dependencies": {
     "jspdf": "^4.2.1"
