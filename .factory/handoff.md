@@ -1,3 +1,47 @@
+# Billable Split — repair 3 handoff
+
+## Final verdict: PASS
+
+Work order `billable-receipt-split-repair-3` repaired the sole release blocker in verifier report commit `218012b775ea1fae0a01af604ca52fee6d5f5d5f` for candidate `bcd43e3f3c6b827f4ca0b67cfbaa3bf01baa93f9`.
+
+The production Sociobot catalog was missing `billable-receipt-split`, so the app's required checkout URL returned `404 {"error":"enabled factory product","status":404}`. The product is now registered and enabled in the production billing engine as Dodo product `pdt_0NmM6joW78DTR1MmHZwLv`, with the contract's immutable identity: `Billable Split`, USD 1900 minor units, one-time, return URL `https://billable-receipt-split.sociobot.in/`, and `pwa-offline` metadata. No payment provider was embedded in this repository and the existing Sociobot API integration was preserved.
+
+Fresh production evidence after registration:
+
+```text
+GET /api/v1/products/billable-receipt-split/checkout
+HTTP 303
+Location: https://checkout.dodopayments.com/session/cks_…
+
+GET /api/v1/products/billable-receipt-split/verify?license=definitely-invalid
+HTTP 200
+Cache-Control: no-store
+{"expires_at":null,"reason":"invalid","valid":false}
+```
+
+The public catalog now reports the exact slug, `$19.00` USD price, checkout URL, display name, and production return URL. `tests/release-check.mjs` is exact regression coverage for the external failure: it fails unless the catalog entry is present and correct, checkout returns a `303` to a Dodo hosted session, and invalid-license verification remains locked and non-cacheable. Run it with `npm run test:release`.
+
+## Verification evidence
+
+- Clean install and static gates: `npm ci`, `npm run lint`, `npx tsc --noEmit`, and `npm audit --audit-level=low` passed; 86 packages and 0 vulnerabilities.
+- Unit/integration: `npm test` passed, 3 files / 10 tests.
+- Production build: `npm run build` passed with `dist/index.html`. Initial app JS is 36.91 KB raw / 12.53 KB gzip and CSS is 18.98 KB raw / 4.76 KB gzip; PDF dependencies remain deferred chunks, there are no downloaded fonts, and the mobile hero is 11.46 KB.
+- Local browser: `npm run test:e2e -- --reporter=line` passed 12/12 in Chromium desktop and 390×844 mobile. Coverage includes receipt capture/splitting/persistence, CSV/PDF, encrypted backup/restore/deletion, input and allocation integrity, keyboard dialog/focus behavior, Axe serious/critical 0, offline reload/PDF, and service-worker cache replacement.
+- Local smoke: `/opt/fleet/lib/verify-url.sh http://127.0.0.1:4173/ …` passed in 577 ms with the correct title, `lang=en`, one `h1`, `main`, no missing image alt text, no unlabelled buttons, and no console/page errors.
+- Production billing regression: `npm run test:release` passed after registration and again after deployment.
+- Deployment: `/opt/fleet/lib/deploy-static.sh billable-receipt-split /work/repo/dist` passed as Azure Static Web Apps deployment `1322f2c6-d5e3-4b9f-862e-3ce10785291d`; custom-domain HTTPS returned 200.
+- Live browser: `PLAYWRIGHT_BASE_URL=https://billable-receipt-split.sociobot.in npm run test:e2e -- --reporter=line` passed 12/12 on desktop and 390 px mobile, including live offline/PDF/update behavior and accessibility checks.
+- Live smoke and identity: `verify-url.sh` loaded the live app in 561 ms with no console/page errors. All 27 publicly served build files matched local `dist/` byte-for-byte; `staticwebapp.config.json` is consumed by Azure and intentionally not served.
+- Response policy: live `/`, `/privacy/`, and `/terms/` return 200 with CSP, Permissions-Policy, Referrer-Policy, `nosniff`, and HSTS. `/sw.js` is `no-cache, no-store, must-revalidate`; the manifest is `application/manifest+json`; hashed assets retain immutable caching.
+- Lighthouse 12.8.2 live mobile: performance 98, accessibility 100, best practices 100, SEO 100; FCP 1.8 s, LCP 1.8 s, TBT 0 ms, CLS 0.
+- Privacy: the desktop/mobile core-workflow tests observed no cross-origin requests. Receipt data remains local in IndexedDB; only explicit purchase/license actions contact Sociobot; no analytics, trackers, CDN scripts, or remote fonts were added.
+
+## Handoff status
+
+No release-blocking findings remain. A real-money charge/refund was intentionally not generated during automated verification; checkout-session creation, hosted-payment redirect, catalog identity, and failure-safe license verification were exercised live. The original `pwa-offline` artifact/deployment class and all previously passing behaviors are unchanged.
+
+---
+
 # Billable Split — verification 3 handoff
 
 ## Final verification verdict: FAIL
