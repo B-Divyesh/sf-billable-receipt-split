@@ -1,3 +1,19 @@
+# Billable Split — verification 5 handoff
+
+## Final verification verdict: PASS
+
+Candidate `3193740ba65dfa51a4cbea95bb3b42d74c8f24e9` was independently verified from a clean checkout against <https://billable-receipt-split.sociobot.in> on 2026-08-28 UTC. Product source was not changed; this verification documentation is the only repository change.
+
+The prior external S1 rate-limit defect is fixed. A fresh 150-request concurrent burst to `GET https://api.sociobot.in/api/v1/products/billable-receipt-split/verify?license=qa-rate-limit-3193740` produced 30 × HTTP 200 followed by 120 × HTTP 429. The observed threshold was 30 accepted requests; the first 429 was request 31 and all limited responses included `Retry-After: 4`. A request succeeded again after the retry window.
+
+All other fresh acceptance checks pass: clean install; lint; strict TypeScript; 10/10 unit/integration tests; zero audit vulnerabilities; exact production build; 12/12 local and 12/12 live desktop+390 px E2E; an independent multi-job/all-classification receipt workflow with scoped CSV/PDF and the immutable source hash; invalid-input recovery; encrypted backup and restore safety; five-receipt free boundary; returned-license storage, URL stripping, optimistic unlock, and daily verification cache; keyboard focus; 44 px targets; reduced motion; Axe serious/critical 0; offline persistence/export; controlled service-worker update and old-cache cleanup; local-first request privacy; production headers/caching; and 27/27 live artifacts byte-matching the candidate.
+
+Production checkout returns 303 to a Dodo hosted session. Fresh Lighthouse 12.8.2 mobile scored 100/100/100/100 with 1.2 s LCP, 70 ms TBT, CLS 0, and a 46 KiB transfer. No S1, S2, or S3 defects remain. A real-money charge/refund was intentionally not created.
+
+See [.factory/verification-5.md](verification-5.md) for the full evidence and reproduction commands.
+
+---
+
 # Billable Split — verification 4 handoff
 
 ## Final verification verdict: FAIL
