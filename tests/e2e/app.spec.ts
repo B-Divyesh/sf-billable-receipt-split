@@ -3,9 +3,12 @@ import AxeBuilder from '@axe-core/playwright';
 
 const RECEIPT_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
 
-test('creates, splits, persists, and works offline', async ({ page, context }) => {
+test('creates, splits, persists, and works offline', async ({ page, context }, testInfo) => {
   const errors: string[] = [];
+  const externalRequests: string[] = [];
+  const appOrigin = new URL(String(testInfo.project.use.baseURL)).origin;
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('request', (request) => { if (new URL(request.url()).origin !== appOrigin) externalRequests.push(request.url()); });
   await page.goto('/');
   await expect(page.locator('h1')).toHaveCount(1);
   await page.getByRole('button', { name: 'Add a receipt' }).click();
@@ -41,6 +44,7 @@ test('creates, splits, persists, and works offline', async ({ page, context }) =
   await page.getByRole('button', { name: /PDF/ }).click();
   expect((await pdfDownload).suggestedFilename()).toContain('oak-street-kitchen');
   expect(errors).toEqual([]);
+  expect(externalRequests).toEqual([]);
 });
 
 test('downloads an encrypted local backup', async ({ page }) => {
@@ -55,6 +59,7 @@ test('downloads an encrypted local backup', async ({ page }) => {
   await page.getByRole('button', { name: /Fingerprint & continue/ }).click();
   await page.getByRole('button', { name: 'All receipts' }).click();
   await page.getByRole('button', { name: 'Data & license' }).click();
+  await expect(page.getByRole('link', { name: 'Buy once · $19' })).toHaveAttribute('href', 'https://api.sociobot.in/api/v1/products/billable-receipt-split/checkout');
   await page.getByRole('region', { name: 'Encrypted backup' }).getByLabel('Backup password').fill('correct-horse-battery');
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: /Download encrypted backup/ }).click();

@@ -1,35 +1,65 @@
-# Billable Split verification handoff
+# Billable Split repair handoff
 
-## Verdict: FAIL
+## Verdict: BLOCKED ON BILLING REGISTRATION
 
-Independent verification on 2026-08-28 tested candidate `89fc38aa383eee503639da2f14ff8cdd9ae7dab8` and <https://billable-receipt-split.sociobot.in>. The live deployment matches the candidate exactly (27/27 built files byte-identical), so this is not a stale-deployment result.
+Repair work order `billable-receipt-split-repair-1` addressed candidate `89fc38aa383eee503639da2f14ff8cdd9ae7dab8` and verifier report `192208c5df8c907a7a48d2b1ece0d7854ead87b1`. The repaired static PWA is deployed at <https://billable-receipt-split.sociobot.in>.
 
-Release blockers:
+All repository-owned S1/S2/S3 findings are fixed and covered. The one remaining release blocker is external: at 2026-08-28 05:18 UTC, production `GET https://api.sociobot.in/api/v1/products/billable-receipt-split/checkout` still returned HTTP 404 with `{"error":"enabled factory product","status":404}`. The app already uses the required production URL and its return-license/verification flow remains intact. This workspace has no `fleet/new-paid-product.sh` (or another billing-registration command), and `AGENTS.md` prohibits changing billing from this repository. The factory billing owner must register/enable the $19 one-time product, then verify a hosted-checkout redirect and real return token before release.
 
-1. Production `GET https://api.sociobot.in/api/v1/products/billable-receipt-split/checkout` returns HTTP 404, so the advertised $19 one-time unlock cannot be purchased.
-2. Reducing a line total below its existing allocations is accepted. A tested receipt then showed `$20.00 over` on the line and `$0.00 left` at receipt level while CSV/PDF exports remained enabled, allowing contradictory job-cost evidence.
+## Repairs
 
-Major defects: accepted huge amounts silently lose cents, `text/plain` files can be stored as receipt images, and three mobile targets are under the contract's 44×44 px minimum. Minor defects cover misleading hash-mismatch recovery copy and production cache/browser-policy hardening.
+- Line totals can no longer be reduced below their existing allocation total. The attempted edit is rejected without mutating IndexedDB and tells the user to reconcile splits first.
+- Receipt status now detects per-line over-allocation independently, so source gaps cannot cancel allocation overruns. CSV/PDF controls are disabled unless line totals equal the source total and every line is exactly allocated. Click handlers repeat the integrity guard.
+- Money parsing now uses decimal-string-to-`BigInt` conversion and rejects values above `Number.MAX_SAFE_INTEGER` cents. Every money control has the matching `90071992547409.91` maximum.
+- Capture accepts only matching PNG, JPEG, WebP, or AVIF MIME/signature pairs and requires successful browser decoding. Restore applies the same source-image validation.
+- Encrypted restore now distinguishes password/decryption failure from malformed content and SHA-256 fingerprint mismatch; a mismatch reports that nothing was restored.
+- The wordmark, Privacy, and Terms targets now meet the 44×44 CSS-pixel minimum, including legal pages.
+- Service worker `v10` removes only superseded `billable-split-*` caches on activation and subsequent requests. A regression recreates the verifier's lingering `v8` cache case.
+- Production response policy now supplies CSP, Permissions-Policy, correct manifest MIME, no-store service-worker caching, and immutable one-year caching for content-hashed assets. App JS/CSS and both responsive hero files are content-hashed.
+- Added an `oxlint` gate and made Playwright runnable against either local preview or the live deployment.
 
-Full steps, exact outputs, positive coverage, and severity are in [.factory/verification.md](verification.md).
+## Exact regression coverage
 
-## Verification commands
+- `tests/utils.test.ts`: cancelled-balance over-allocation, evidence eligibility, exact safe-cent boundary (`…09.91` accepted; `…09.92`/`…09.93` rejected), two-decimal enforcement, and MIME/signature checks.
+- `tests/backup.test.ts`: correctly encrypted but fingerprint-mismatched backup produces an integrity error; wrong password remains a decryption error.
+- `tests/policy.test.ts`: security headers, immutable asset policy, no-store worker policy, and scoped old-cache deletion.
+- `tests/e2e/app.spec.ts`: exact $100/$60+$40 verifier scenario, rejected $60→$40 line edit, persisted original value, forced legacy-invalid IndexedDB record, invalid status and disabled CSV/PDF, huge input, `text/plain`, retries after validation errors, 44 px targets, dialog focus/Escape restoration, Axe on app/settings/privacy/terms, same-origin-only core workflow, persistence, encrypted backup/restore, offline reload/PDF, and stale-cache cleanup.
+
+## Verification evidence
+
+Clean/local gates:
+
+- `npm ci`: pass; 86 packages installed; audit reported 0 vulnerabilities.
+- `npm run lint`: pass.
+- `npm test`: pass, 3 files / 10 tests.
+- `npx tsc --noEmit`: pass.
+- `npm audit --audit-level=low`: pass, 0 vulnerabilities.
+- `npm run build`: pass; `dist/index.html` present.
+- Initial bundle: JS 36.91 KB raw / 12.53 KB gzip; CSS 18.98 KB / 4.76 KB gzip; mobile hero 11.46 KB. PDF libraries remain lazy chunks.
+- `npm run test:e2e`: pass, 12/12 across Chromium 1440×1000 and 390×844.
+- `/opt/fleet/lib/verify-url.sh http://127.0.0.1:4173 ...`: pass; title/lang/one h1/main/alt/button labels and zero console errors.
+- Local Lighthouse 12.8.2 mobile: performance 97, accessibility 100, best practices 100, SEO 100; FCP 1.0 s, LCP 1.4 s, TBT 200 ms, CLS 0.
+
+Deployment/live gates:
+
+- `/opt/fleet/lib/deploy-static.sh billable-receipt-split /work/repo/dist`: pass; Azure deployment `b3d9a7d3-5d3e-426f-8371-5190cf559d78`; custom domain HTTPS 200.
+- 27/27 served files compared byte-for-byte with local `dist/`; zero mismatches (`staticwebapp.config.json` is consumed by Azure and intentionally not served).
+- `/opt/fleet/lib/verify-url.sh https://billable-receipt-split.sociobot.in ...`: pass in 758 ms with zero console/page errors.
+- `PLAYWRIGHT_BASE_URL=https://billable-receipt-split.sociobot.in npm run test:e2e`: pass, 12/12 on desktop and 390 px mobile, including live offline/PDF/cache coverage.
+- Live Lighthouse 12.8.2 mobile: 100/100/100/100; FCP 1.0 s, LCP 1.1 s, TBT 30 ms, CLS 0.
+- Live `/`, `/privacy/`, `/terms/`: HTTP 200 with CSP, Permissions-Policy, Referrer-Policy, and `nosniff`; HTML is revalidated. `/sw.js` is `no-cache, no-store, must-revalidate`; `.webmanifest` is `application/manifest+json`; hashed JS/CSS/hero responses are `max-age=31536000, immutable`.
+
+## Run it
 
 ```sh
 npm ci
+npm run lint
 npm test
 npx tsc --noEmit
 npm audit --audit-level=low
 npm run build
 npm run test:e2e
+PLAYWRIGHT_BASE_URL=https://billable-receipt-split.sociobot.in npm run test:e2e
 ```
 
-All commands above passed. Fresh live Lighthouse mobile scored 99 performance / 100 accessibility / 100 best practices / 100 SEO (LCP 1.1 s, CLS 0). Axe found zero serious/critical issues on all tested app and legal views. Live offline reload, IndexedDB persistence, offline PDF, encrypted backup/restore, keyboard/dialog focus, reduced motion, and responsive 390 px layout passed.
-
-## Required next steps
-
-1. Register/enable the production Sociobot billing product and verify a real hosted-checkout redirect and return-license flow.
-2. Prevent a line edit from setting a total below allocated cents (or require allocations to be reconciled first), and disable evidence exports for any internally invalid receipt.
-3. Add safe maximum/cents validation, enforce image MIME/content, and bring all interactive targets to 44×44 px.
-4. Improve fingerprint-mismatch error text, immutable caching/security headers, and old service-worker cache cleanup.
-5. Repeat independent QA at the repaired candidate; current verdict remains FAIL despite passing automated gates.
+There is no package/consumer test for this static PWA. No application behavior that previously passed was removed; local-first storage, export ownership, encryption, deletion, offline use, installability, and license restoration remain available.
