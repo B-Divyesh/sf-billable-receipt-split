@@ -250,7 +250,7 @@ function receiptDetail(receipt: Receipt): string {
         <dl class="source-meta"><div><dt>Original file</dt><dd>${escapeHtml(receipt.image.filename)}</dd></div><div><dt>Tamper-check value</dt><dd title="${receipt.image.sha256}">${receipt.image.sha256}</dd></div></dl>
       </aside>
       <section class="ledger-panel" aria-labelledby="ledger-title">
-        <div class="panel-title ledger-title"><div><div class="eyebrow">Allocation ledger</div><h2 id="ledger-title">Receipt lines</h2></div><span class="ledger-tally">${money(lineTotal, receipt.currency)} / ${money(receipt.totalCents, receipt.currency)}</span></div>
+        <div class="panel-title ledger-title"><div><div class="eyebrow">Job split ledger</div><h2 id="ledger-title">Receipt lines</h2></div><span class="ledger-tally">${money(lineTotal, receipt.currency)} / ${money(receipt.totalCents, receipt.currency)}</span></div>
         <datalist id="jobs-${receipt.id}">${allJobs.map((job) => `<option value="${escapeHtml(job)}"></option>`).join('')}</datalist>
         ${receipt.lines.length ? `<ol class="line-list">${lines}</ol>` : '<div class="ledger-empty"><span>01</span><h3>Add the first receipt line</h3><p>Enter each purchased item exactly once, then split it across one or more jobs.</p></div>'}
         <form class="add-line-form" data-action="add-line">
@@ -265,7 +265,7 @@ function receiptDetail(receipt: Receipt): string {
       <div><div class="eyebrow">Job cost records</div><h2 id="export-title">Export by job</h2><p>${exportable ? 'Every PDF includes the receipt image and its tamper-check value.' : 'Balance every line and the receipt total before exporting.'}</p></div>
       ${allJobs.length ? `<ul class="job-list">${allJobs.map((job) => {
         const total = receipt.lines.flatMap((line) => line.allocations).filter((allocation) => allocation.job === job).reduce((sum, allocation) => sum + allocation.amountCents, 0);
-        return `<li><span><strong>${escapeHtml(job)}</strong><small>${money(total, receipt.currency)} allocated</small></span><button class="button button-secondary" data-export-csv="${escapeHtml(job)}" ${exportable ? '' : 'disabled'}>CSV ${icon('download')}</button><button class="button button-primary" data-export-pdf="${escapeHtml(job)}" ${exportable ? '' : 'disabled'}>PDF ${icon('download')}</button></li>`;
+        return `<li><span><strong>${escapeHtml(job)}</strong><small>${money(total, receipt.currency)} split</small></span><button class="button button-secondary" data-export-csv="${escapeHtml(job)}" ${exportable ? '' : 'disabled'}>CSV ${icon('download')}</button><button class="button button-primary" data-export-pdf="${escapeHtml(job)}" ${exportable ? '' : 'disabled'}>PDF ${icon('download')}</button></li>`;
       }).join('')}</ul>` : '<div class="export-empty">Add a job split to make its CSV and PDF.</div>'}
     </section>
     <details class="history-panel"><summary>Receipt history <span>${receipt.history.length} events</span></summary><ol>${receipt.history.slice(0, 12).map((event) => `<li><time>${new Date(event.at).toLocaleString()}</time>${escapeHtml(event.label)}</li>`).join('')}</ol></details>
