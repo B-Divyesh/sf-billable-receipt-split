@@ -1,19 +1,17 @@
-# Billable Split — review 2 handoff
+# Billable Split — polish 2 handoff
 
 ## Result
 
-Completed the adversarial first-read review without modifying product code. The verdict is **FAIL**. Full evidence is in [review-2.md](review-2.md).
+Repair commit `3befbd53a95a79c473c2a2422cdb78ddffd0fef9` is pushed and deployed. The demo is isolated from real receipt and license state, Reset/Start for real complete, route focus works, and every remaining reviewed promise now has an observable claim test or was removed.
 
 ## Verification
 
-- Fresh production checks at 390 px and desktop: cold first read, demo, requests, metadata, links, 404, and Back behaviour.
-- Fresh clone `/tmp/billable-review-2.rvOGi5`: `npm ci`, `npm test` (10/10), `npm run build`, `npm run lint`, `npx tsc --noEmit`, and every individual `.factory/claims.json` command passed.
-- Production full Playwright also passed. Direct review found cases absent from that suite: demo Reset/Start, pre-existing real localStorage during demo, and route-change focus.
+- Fresh clone `/tmp/billable-clean-yNWT0C`: `npm ci` plus all 16 commands in `.factory/claims.json` passed.
+- Local: lint, TypeScript, Vitest (10/10), build, billing release check, and full Playwright (46/46) passed.
+- Deployment: `/opt/fleet/lib/deploy-static.sh billable-receipt-split dist`, deployment `8cddd1fe-3642-4d73-b1ca-3bdfcd817325`.
+- Cold live root check: `verify-url.sh` passed at 1046ms with zero console errors, correct title/lang/main/h1/alt labels. Evidence: `.factory/evidence/polish-2/verify.json` and screenshots.
+- Live browser suite: serial rerun passed 46/46 at the deployed URL across desktop and 390px, including Axe serious/critical checks, demo isolation, routing focus, and every claim.
 
-## Known gaps / next steps
+## Known gaps
 
-Blocking: demo controls do not complete their stated actions; demo reads/writes real license localStorage and sends verification traffic; route changes do not focus the new h1.
-
-Major: paid-limit, classification, PDF-evidence, receipt-history/deletion, backup/integrity, installation, and automatic-text-reading claims are not registered/tested as visitor claims.
-
-No source/product code changed in this work order.
+None. The build output remains `dist/`; deployment is static/PWA as required.
