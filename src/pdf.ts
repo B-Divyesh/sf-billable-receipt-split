@@ -4,7 +4,9 @@ import { imageToJpegDataUrl, money, safeFilename } from './utils';
 
 export async function exportJobPdf(receipt: Receipt, job: string): Promise<void> {
   const { jsPDF } = await import('jspdf');
-  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+  // Keep the source label and tamper-check value inspectable in the local PDF.
+  // This is evidence a contractor can verify without a server or proprietary reader.
+  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: false });
   const margin = 44;
   let y = 48;
   doc.setFillColor(11, 13, 12);

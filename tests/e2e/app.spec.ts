@@ -116,6 +116,18 @@ test('has keyboard-visible landmarks and legal links', async ({ page }) => {
   expect(termsResults.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
 });
 
+test('moves focus and announces the destination on route navigation and browser Back', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Data & license' }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+  await expect(page.locator('#route-announcement')).toHaveText('Your data, your key.');
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+  await expect(page.locator('#route-announcement')).toHaveText('Split one supplier receipt by job');
+});
+
 test('rejects unsafe money and non-image receipt sources', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Add a receipt' }).click();

@@ -1,7 +1,7 @@
 import './styles.css';
 import { createEncryptedBackup, readEncryptedBackup } from './backup';
 import { clearReceipts, deleteReceipt, getReceipt, listReceipts, replaceAllReceipts, saveReceipt, useStorageNamespace } from './db';
-import { seedDemo } from './demo';
+import { discardDemoState, seedDemo } from './demo';
 import { CHECKOUT_URL, captureReturnedLicense, clearLicense, isOptimisticallyUnlocked, storeLicense, verifyLicense } from './license';
 import { exportJobPdf } from './pdf';
 import type { CostType, Receipt } from './types';
@@ -14,12 +14,11 @@ let receipts: Receipt[] = [];
 let activeReceipt: Receipt | null = null;
 let view: 'home' | 'receipt' | 'settings' | 'not-found' = 'home';
 let objectUrl: string | null = null;
-let unlocked = isOptimisticallyUnlocked();
+let unlocked = false;
 let busy = false;
 let demoMode = false;
-
-captureReturnedLicense();
-unlocked = isOptimisticallyUnlocked();
+let demoLimited = false;
+let hasRendered = false;
 
 function icon(name: 'mark' | 'plus' | 'back' | 'download' | 'shield' | 'trash' | 'more'): string {
   const paths = {
@@ -35,15 +34,18 @@ function icon(name: 'mark' | 'plus' | 'back' | 'download' | 'shield' | 'trash' |
 }
 
 function routeForCurrentView(): string {
-  if (view === 'settings') return demoMode ? '/demo/settings' : '/settings';
-  if (view === 'receipt' && activeReceipt) return `/receipts/${encodeURIComponent(activeReceipt.id)}`;
-  return demoMode ? '/demo' : '/';
+  if (view === 'settings') return demoMode ? `/demo/settings${demoLimited ? '?free=1' : ''}` : '/settings';
+  if (view === 'receipt' && activeReceipt) return `${demoMode ? '/demo/receipts' : '/receipts'}/${encodeURIComponent(activeReceipt.id)}`;
+  return demoMode ? `/demo${demoLimited ? '?free=1' : ''}` : '/';
 }
 
-function navigate(path: string, replace = false): void {
+async function navigate(path: string, replace = false): Promise<void> {
   const url = new URL(path, location.origin);
-  if (!replace && `${location.pathname}${location.search}` !== `${url.pathname}${url.search}`) history.pushState({}, '', `${url.pathname}${url.search}`);
-  void loadRoute();
+  const next = `${url.pathname}${url.search}`;
+  const current = `${location.pathname}${location.search}`;
+  if (replace && current !== next) history.replaceState({}, '', next);
+  else if (!replace && current !== next) history.pushState({}, '', next);
+  await loadRoute();
 }
 
 function applyMetadata(): void {
@@ -74,7 +76,7 @@ function shell(content: string): string {
       <nav aria-label="Primary navigation">
         <a class="nav-button ${view === 'home' && !demoMode ? 'is-current' : ''}" href="/" data-route>Receipts</a>
         <a class="nav-button ${demoMode ? 'is-current' : ''}" href="/demo" data-route>Demo</a>
-        <a class="nav-button ${view === 'settings' ? 'is-current' : ''}" href="${demoMode ? '/demo/settings' : '/settings'}" data-route>Data & license</a>
+        <a class="nav-button ${view === 'settings' ? 'is-current' : ''}" href="${demoMode ? `/demo/settings${demoLimited ? '?free=1' : ''}` : '/settings'}" data-route>Data & license</a>
         <a class="nav-button" href="/privacy/">Privacy</a>
       </nav>
     </header>
@@ -206,7 +208,7 @@ function receiptDetail(receipt: Receipt): string {
   objectUrl = URL.createObjectURL(receipt.image.blob);
   return `<section class="receipt-workspace">
     <div class="workspace-top">
-      <a class="back-button" href="${demoMode ? '/demo/list' : '/'}" data-route>${icon('back')} All receipts</a>
+      <a class="back-button" href="${demoMode ? `/demo/list${demoLimited ? '?free=1' : ''}` : '/'}" data-route>${icon('back')} All receipts</a>
       ${stepRail(allJobs.length ? 3 : receipt.lines.length ? 2 : 1)}
       <span class="status ${status.className}"><i></i>${status.label}</span>
     </div>
@@ -245,6 +247,15 @@ function receiptDetail(receipt: Receipt): string {
 }
 
 function settings(): string {
+  const licenseSection = demoMode && !demoLimited
+    ? `<section class="license-panel" aria-labelledby="license-title"><div><div class="eyebrow">Sample license</div><h2 id="license-title">Sample archive has no receipt limit</h2><p>This sample shows the workspace after a valid $19 license removes the five-receipt limit. It does not use or save a license.</p></div><small>Start for real before buying or restoring a license. <a href="/terms/">Terms</a> apply.</small></section>`
+    : demoMode
+      ? `<section class="license-panel" aria-labelledby="license-title"><div><div class="eyebrow">Sample free archive</div><h2 id="license-title">The five-receipt sample archive is full</h2><p>Start for real to buy or restore a license. This limited sample never uses or saves a real license.</p></div><small>CSV, PDF, backup, and deletion stay available. <a href="/terms/">Terms</a> apply.</small></section>`
+    : `<section class="license-panel" aria-labelledby="license-title">
+      <div><div class="eyebrow">One-time license</div><h2 id="license-title">${unlocked ? 'Unlimited archive unlocked' : 'Keep every receipt'}</h2><p>${unlocked ? 'This device can create an unlimited receipt archive. CSV, PDF, backup, and deletion always remain available.' : `The free version includes ${FREE_RECEIPT_LIMIT} complete receipts with all exports. Pay $19 once to remove the archive limit on your devices.`}</p>${!unlocked && receipts.length >= FREE_RECEIPT_LIMIT ? '<p class="form-error">The free archive is full. Export or delete a receipt, or unlock unlimited storage.</p>' : ''}</div>
+      ${unlocked ? '<button class="button button-quiet" data-remove-license>Remove license from this device</button>' : `<div class="license-actions"><a class="button button-primary" href="${CHECKOUT_URL}">Buy once · $19</a><form data-action="restore-license"><label><span>Have a license?</span><input name="license" autocomplete="off" required placeholder="Paste license token" /></label><button class="button button-secondary" type="submit">Verify & unlock</button><p class="form-error" aria-live="assertive"></p></form></div>`}
+      <small>Sociobot / Dodo is the merchant of record. Refunds are handled there and revoke the license. <a href="/terms/">Terms</a> apply.</small>
+    </section>`;
   return `<section class="settings-page">
     <div class="eyebrow">Device control panel</div><h1>Your data, your key.</h1><p class="lede">Back up every receipt and image in one password-encrypted file. Nothing is uploaded.</p>
     <div class="settings-grid">
@@ -255,11 +266,7 @@ function settings(): string {
         <form data-action="restore" class="form-stack"><label><span>Backup file</span><input name="backup" type="file" accept=".billsplit,application/json" required /></label><label><span>Backup password</span><input name="password" type="password" autocomplete="current-password" required /></label><button class="button button-secondary" type="submit">Check & restore backup</button><p class="form-error" aria-live="assertive"></p></form>
       </section>
     </div>
-    <section class="license-panel" aria-labelledby="license-title">
-      <div><div class="eyebrow">One-time license</div><h2 id="license-title">${unlocked ? 'Unlimited archive unlocked' : 'Keep every receipt'}</h2><p>${unlocked ? 'This device can create an unlimited receipt archive. CSV, PDF, backup, and deletion always remain available.' : `The free version includes ${FREE_RECEIPT_LIMIT} complete receipts with all exports. Pay $19 once to remove the archive limit on your devices.`}</p>${!unlocked && receipts.length >= FREE_RECEIPT_LIMIT ? '<p class="form-error">The free archive is full. Export or delete a receipt, or unlock unlimited storage.</p>' : ''}</div>
-      ${unlocked ? '<button class="button button-quiet" data-remove-license>Remove license from this device</button>' : `<div class="license-actions"><a class="button button-primary" href="${CHECKOUT_URL}">Buy once · $19</a><form data-action="restore-license"><label><span>Have a license?</span><input name="license" autocomplete="off" required placeholder="Paste license token" /></label><button class="button button-secondary" type="submit">Verify & unlock</button><p class="form-error" aria-live="assertive"></p></form></div>`}
-      <small>Sociobot / Dodo is the merchant of record. Refunds are handled there and revoke the license. <a href="/terms/">Terms</a> apply.</small>
-    </section>
+    ${licenseSection}
   </section>`;
 }
 
@@ -273,7 +280,9 @@ function render(): void {
   app.innerHTML = shell(content);
   applyMetadata();
   const heading = document.querySelector<HTMLElement>('main h1');
-  requestAnimationFrame(() => heading?.focus());
+  heading?.setAttribute('tabindex', '-1');
+  if (hasRendered) requestAnimationFrame(() => heading?.focus());
+  hasRendered = true;
   const announcement = document.querySelector<HTMLElement>('#route-announcement');
   if (announcement && heading) announcement.textContent = heading.textContent ?? '';
 }
@@ -309,7 +318,7 @@ async function persist(label: string): Promise<void> {
 async function createReceipt(form: HTMLFormElement): Promise<void> {
   if (busy) return;
   if (!unlocked && receipts.length >= FREE_RECEIPT_LIMIT) {
-    navigate(demoMode ? '/demo/settings' : '/settings'); toast('The free archive is full. Export or delete a receipt, or unlock unlimited storage.', 'error'); return;
+    await navigate(demoMode ? `/demo/settings${demoLimited ? '?free=1' : ''}` : '/settings'); toast('The free archive is full. Export or delete a receipt, or unlock unlimited storage.', 'error'); return;
   }
   const data = new FormData(form);
   const file = data.get('image');
@@ -340,18 +349,18 @@ app.addEventListener('click', async (event) => {
   const target = event.target as HTMLElement;
   if (target.closest('[data-reload]')) { location.reload(); return; }
   const routeLink = target.closest<HTMLAnchorElement>('[data-route]');
-  if (routeLink) { event.preventDefault(); navigate(routeLink.getAttribute('href') ?? '/'); return; }
+  if (routeLink) { event.preventDefault(); await navigate(routeLink.getAttribute('href') ?? '/'); return; }
   const nav = target.closest<HTMLElement>('[data-nav]');
-  if (nav) { navigate(nav.dataset.nav === 'settings' ? (demoMode ? '/demo/settings' : '/settings') : '/'); return; }
-  if (target.closest('[data-reset-demo]')) { receipts = await seedDemo(true); activeReceipt = receipts[0] ?? null; view = 'receipt'; navigate(routeForCurrentView(), true); toast('Sample data reset'); return; }
-  if (target.closest('[data-start-real]')) { await clearReceipts(); demoMode = false; useStorageNamespace('real'); receipts = await listReceipts(); activeReceipt = null; view = 'home'; navigate('/', true); toast('Demo data discarded. You can now add a real receipt.'); return; }
+  if (nav) { await navigate(nav.dataset.nav === 'settings' ? (demoMode ? `/demo/settings${demoLimited ? '?free=1' : ''}` : '/settings') : '/'); return; }
+  if (target.closest('[data-reset-demo]')) { await seedDemo(true); await navigate(`/demo${demoLimited ? '?free=1' : ''}`, true); toast('Sample data reset'); return; }
+  if (target.closest('[data-start-real]')) { await clearReceipts(); discardDemoState(); await navigate('/', true); toast('Demo data discarded. You can now add a real receipt.'); return; }
   if (target.closest('[data-new-receipt]')) {
-    if (!unlocked && receipts.length >= FREE_RECEIPT_LIMIT) { navigate(demoMode ? '/demo/settings' : '/settings'); toast('The free archive is full. Unlock unlimited receipts or delete one.', 'error'); }
+    if (!unlocked && receipts.length >= FREE_RECEIPT_LIMIT) { await navigate(demoMode ? `/demo/settings${demoLimited ? '?free=1' : ''}` : '/settings'); toast('The free archive is full. Unlock unlimited receipts or delete one.', 'error'); }
     else document.querySelector<HTMLDialogElement>('#new-receipt-dialog')?.showModal();
     return;
   }
   const open = target.closest<HTMLElement>('[data-open-receipt]');
-  if (open?.dataset.openReceipt) { activeReceipt = await getReceipt(open.dataset.openReceipt) ?? null; if (activeReceipt) { view = 'receipt'; navigate(routeForCurrentView()); } return; }
+  if (open?.dataset.openReceipt) { activeReceipt = await getReceipt(open.dataset.openReceipt) ?? null; if (activeReceipt) { view = 'receipt'; await navigate(routeForCurrentView()); } return; }
   const toggle = target.closest<HTMLButtonElement>('[data-toggle-line]');
   if (toggle) { const editor = document.querySelector<HTMLElement>(`#line-${toggle.dataset.toggleLine}`); if (editor) { editor.hidden = !editor.hidden; toggle.setAttribute('aria-expanded', String(!editor.hidden)); toggle.textContent = editor.hidden ? 'Edit split' : 'Hide split'; } return; }
   const deleteLineButton = target.closest<HTMLElement>('[data-delete-line]');
@@ -366,7 +375,7 @@ app.addEventListener('click', async (event) => {
   if (target.closest('[data-delete-receipt]') && activeReceipt) {
     const supplier = activeReceipt.supplier;
     if (confirm(`Permanently delete the ${supplier} receipt, its source image, and every allocation? This cannot be undone.`)) {
-      await deleteReceipt(activeReceipt.id); receipts = await listReceipts(); activeReceipt = null; view = 'home'; navigate(routeForCurrentView()); toast(`${supplier} receipt permanently deleted`);
+      await deleteReceipt(activeReceipt.id); receipts = await listReceipts(); activeReceipt = null; view = 'home'; await navigate(demoMode ? '/demo/list' : '/'); toast(`${supplier} receipt permanently deleted`);
     } return;
   }
   const csvButton = target.closest<HTMLElement>('[data-export-csv]');
@@ -381,7 +390,7 @@ app.addEventListener('click', async (event) => {
     try { await exportJobPdf(activeReceipt, pdfButton.dataset.exportPdf); toast(`${pdfButton.dataset.exportPdf} PDF downloaded`); } catch { toast('The PDF could not be created. Try the CSV export instead.', 'error'); } finally { render(); }
     return;
   }
-  if (target.closest('[data-remove-license]')) { clearLicense(); unlocked = false; render(); toast('License removed from this device'); }
+  if (target.closest('[data-remove-license]') && !demoMode) { clearLicense(); unlocked = false; render(); toast('License removed from this device'); }
 });
 
 app.addEventListener('submit', async (event) => {
@@ -423,7 +432,7 @@ app.addEventListener('submit', async (event) => {
       if (!confirm(`Replace this device's ${receipts.length} receipt(s) with the ${restored.length} receipt(s) in this backup?`)) return;
       await replaceAllReceipts(restored); receipts = await listReceipts(); view = 'home'; navigate(routeForCurrentView()); toast(`${restored.length} receipts restored`); return;
     }
-    if (action === 'restore-license') {
+    if (action === 'restore-license' && !demoMode) {
       storeLicense(String(data.get('license'))); const verdict = await verifyLicense(true);
       if (verdict?.valid) { unlocked = true; render(); toast('Unlimited archive unlocked'); }
       else { clearLicense(); unlocked = false; errorFor(form, 'That license could not be verified. Check the token and your connection.'); }
@@ -431,30 +440,37 @@ app.addEventListener('submit', async (event) => {
   } catch (error) { errorFor(form, error instanceof Error ? error.message : 'That action could not be completed.'); }
 });
 
-window.addEventListener('online', () => { render(); toast('Back online'); void verifyLicense().then((verdict) => { if (verdict && verdict.valid !== unlocked) { unlocked = verdict.valid; render(); if (!verdict.valid) toast('License no longer active', 'error'); } }); });
+window.addEventListener('online', () => { render(); toast('Back online'); if (!demoMode) void verifyLicense().then((verdict) => { if (verdict && verdict.valid !== unlocked) { unlocked = verdict.valid; render(); if (!verdict.valid) toast('License no longer active', 'error'); } }); });
 window.addEventListener('offline', () => { render(); toast('Offline mode is ready'); });
 window.addEventListener('popstate', () => { void loadRoute(); });
 
 async function loadRoute(): Promise<void> {
   const path = location.pathname.replace(/\/$/, '') || '/';
-  const wantsDemo = path === '/demo' || path === '/demo/list' || path === '/demo/settings' || new URLSearchParams(location.search).get('demo') === '1';
+  const params = new URLSearchParams(location.search);
+  const wantsDemo = path === '/demo' || path === '/demo/list' || path === '/demo/settings' || path.startsWith('/demo/receipts/') || params.get('demo') === '1';
   demoMode = wantsDemo;
+  demoLimited = demoMode && params.get('free') === '1';
   useStorageNamespace(demoMode ? 'demo' : 'real');
   if (demoMode) await seedDemo();
+  if (demoMode) unlocked = !demoLimited;
+  else { captureReturnedLicense(); unlocked = isOptimisticallyUnlocked(); }
   receipts = await listReceipts();
   activeReceipt = null;
   if (path === '/' || path === '/demo' || path === '/demo/list') {
     if (demoMode && path !== '/demo/list') { activeReceipt = receipts[0] ?? null; view = activeReceipt ? 'receipt' : 'home'; }
     else view = 'home';
   } else if (path === '/settings' || path === '/demo/settings') view = 'settings';
-  else if (path.startsWith('/receipts/')) { activeReceipt = await getReceipt(decodeURIComponent(path.slice('/receipts/'.length))) ?? null; view = activeReceipt ? 'receipt' : 'not-found'; }
+  else if (path.startsWith('/receipts/') || path.startsWith('/demo/receipts/')) {
+    const prefix = path.startsWith('/demo/receipts/') ? '/demo/receipts/' : '/receipts/';
+    activeReceipt = await getReceipt(decodeURIComponent(path.slice(prefix.length))) ?? null; view = activeReceipt ? 'receipt' : 'not-found';
+  }
   else view = 'not-found';
   render();
 }
 
 async function start(): Promise<void> {
   try { await loadRoute(); } catch (error) { app.innerHTML = shell(`<section class="fatal"><h1>Local storage is unavailable</h1><p>${escapeHtml(error instanceof Error ? error.message : 'Reload in a standard browser window.')}</p><button class="button button-primary" data-reload>Try again</button></section>`); return; }
-  void verifyLicense().then((verdict) => { if (verdict && verdict.valid !== unlocked) { unlocked = verdict.valid; render(); if (!verdict.valid) toast('License no longer active', 'error'); } });
+  if (!demoMode) void verifyLicense().then((verdict) => { if (verdict && verdict.valid !== unlocked) { unlocked = verdict.valid; render(); if (!verdict.valid) toast('License no longer active', 'error'); } });
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then((registration) => {
       registration.addEventListener('updatefound', () => {

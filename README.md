@@ -18,7 +18,6 @@ Open <https://billable-receipt-split.sociobot.in/demo> to see a completed materi
 - Download a CSV or PDF for each job. The PDF includes the receipt image and its tamper-check value.
 - Keeps receipts in this browser, shows changes, lets you delete them permanently, and works after an offline reload.
 - Download one password-protected backup of your receipts and images.
-- Install it on a phone or computer and reopen it without a connection.
 - Store five receipts for free. A $19 one-time Sociobot license removes the limit.
 
 It does not read receipt text automatically, reconcile bank accounts, do bookkeeping, or give tax advice.
@@ -57,7 +56,7 @@ Playwright is pinned to 1.58.2. The static deployment root is `dist/`, with `dis
 
 Receipt data stays in your browser. The app has no ads, tracking, remote fonts, or third-party downloads. Purchase and license checks contact Sociobot only when you choose them.
 
-Backup passwords never leave the browser. Before restoring a backup, the app checks that every saved receipt image still matches.
+Backup passwords protect the downloaded file in this browser. Before restoring a backup, the app checks that every saved receipt image still matches.
 
 See the [privacy page](public/privacy/index.html), [terms](public/terms/index.html), and [demo notes](.factory/demo.md).
 
