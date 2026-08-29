@@ -1,1 +1,1 @@
-Split supplier receipts by job and export billable cost records.
+Split supplier receipts by job and export billable cost records offline.

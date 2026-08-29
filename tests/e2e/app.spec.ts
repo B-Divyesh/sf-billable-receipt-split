@@ -121,11 +121,46 @@ test('moves focus and announces the destination on route navigation and browser 
   await page.getByRole('link', { name: 'Data & license' }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
-  await expect(page.locator('#route-announcement')).toHaveText('Your data, your key.');
+  await expect(page.locator('#route-announcement')).toHaveText('Back up or restore receipt data');
   await page.goBack();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
   await expect(page.locator('#route-announcement')).toHaveText('Split one supplier receipt by job');
+});
+
+test('uses Demo metadata for a cold sample route', async ({ page }) => {
+  await page.goto('/demo');
+  await expect(page).toHaveTitle('Demo — Billable Split');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://billable-receipt-split.sociobot.in/demo');
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', 'Try a completed supplier receipt split with sample data.');
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Demo — Billable Split');
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'Demo — Billable Split');
+
+  await page.goto('/?demo=1');
+  await expect(page).toHaveTitle('Demo — Billable Split');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://billable-receipt-split.sociobot.in/demo');
+});
+
+test('keeps the static 404 in the shared navigation shell', async ({ page }) => {
+  await page.goto('/404.html');
+  await expect(page).toHaveTitle('Page not found — Billable Split');
+  await expect(page.locator('h1')).toHaveText('Page not found');
+  const navigation = page.getByRole('navigation', { name: 'Primary navigation' });
+  await expect(navigation.getByRole('link', { name: 'Receipts' })).toHaveAttribute('href', '/');
+  await expect(navigation.getByRole('link', { name: 'Demo' })).toHaveAttribute('href', '/demo');
+  await expect(navigation.getByRole('link', { name: 'Data & license' })).toHaveAttribute('href', '/settings');
+  await expect(navigation.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy/');
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
+});
+
+test('explains the workflow, scope, and license on the landing page', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'How it works' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'What Billable Split does not do' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Free and paid use' })).toBeVisible();
+  await expect(page.getByText('Five receipts are free. A $19 one-time license removes only the receipt limit.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Read the privacy details' })).toHaveAttribute('href', '/privacy/');
 });
 
 test('rejects unsafe money and non-image receipt sources', async ({ page }) => {
@@ -226,5 +261,5 @@ test('removes superseded service-worker caches', async ({ page }) => {
   await page.evaluate(async () => { await caches.open('billable-split-v8'); });
   await expect.poll(() => page.evaluate(() => caches.keys())).toContain('billable-split-v8');
   await page.reload();
-  await expect.poll(() => page.evaluate(() => caches.keys())).toEqual(['billable-split-v11']);
+  await expect.poll(() => page.evaluate(() => caches.keys())).toEqual(['billable-split-v12']);
 });

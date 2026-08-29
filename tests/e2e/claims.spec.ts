@@ -73,8 +73,8 @@ test('@claim:offline-reload reloads the demo and exports while offline', async (
   expect((await download).suggestedFilename()).toContain('.pdf');
 });
 
-test('@claim:license-removes-limit keeps the sample workspace open after five receipts', async ({ page }) => {
-  await page.goto('/demo');
+test('@claim:license-removes-limit lets a $19 sample license add a sixth receipt while free exports work', async ({ page }) => {
+  await page.goto('/demo?free=1');
   await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => { const open = indexedDB.open('demo:billable-split'); open.onsuccess = () => resolve(open.result); open.onerror = () => reject(open.error); });
     const base = await new Promise<any>((resolve, reject) => { const get = db.transaction('receipts').objectStore('receipts').get('demo-north-yard-2026-08-28'); get.onsuccess = () => resolve(get.result); get.onerror = () => reject(get.error); });
@@ -83,8 +83,16 @@ test('@claim:license-removes-limit keeps the sample workspace open after five re
     await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
     db.close();
   });
-  await page.goto('/demo/list');
+  await page.reload();
+  const freeDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: /^CSV/ }).first().click();
+  expect((await freeDownload).suggestedFilename()).toContain('.csv');
+  await page.getByRole('link', { name: 'All receipts' }).click();
   await expect(page.getByText('Saved receipts: 5')).toBeVisible();
+  await page.getByRole('button', { name: 'Add receipt' }).click();
+  await expect(page.getByText('The five-receipt sample archive is full')).toBeVisible();
+
+  await page.goto('/demo/list');
   await page.getByRole('button', { name: 'Add receipt' }).click();
   await expect(page.getByRole('heading', { name: 'Capture the receipt' })).toBeVisible();
   await page.keyboard.press('Escape');

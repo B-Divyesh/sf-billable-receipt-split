@@ -50,15 +50,20 @@ async function navigate(path: string, replace = false): Promise<void> {
 
 function applyMetadata(): void {
   const pathname = location.pathname;
-  const isDemo = demoMode || pathname === '/demo';
-  const page = view === 'settings' ? ['Data and license — Billable Split', 'Back up receipt data or restore a purchase license.']
+  const params = new URLSearchParams(location.search);
+  const isDemoLanding = pathname === '/demo' || pathname === '/demo/list' || (pathname === '/' && params.get('demo') === '1');
+  const canonicalPath = pathname === '/' && params.get('demo') === '1' ? '/demo' : pathname;
+  // A demo starts on a receipt detail, but the browser history and shared
+  // preview must still describe the demo, not its seeded supplier.
+  const page = isDemoLanding ? ['Demo — Billable Split', 'Try a completed supplier receipt split with sample data.']
+    : demoMode && view === 'settings' ? ['Demo settings — Billable Split', 'Review sample backup and license controls without using real data.']
+    : view === 'settings' ? ['Data and license — Billable Split', 'Back up receipt data or restore a purchase license.']
     : view === 'receipt' && activeReceipt ? [`${activeReceipt.supplier} — Billable Split`, 'Split this supplier receipt between jobs and export job costs.']
     : view === 'not-found' ? ['Page not found — Billable Split', 'The page you requested is not available.']
-    : isDemo ? ['Demo — Billable Split', 'Try a completed supplier receipt split with sample data.']
     : ['Billable Split — split receipt costs by job', 'Split one supplier receipt across jobs and export job cost records.'];
   document.title = page[0];
   document.querySelector('meta[name="description"]')?.setAttribute('content', page[1]);
-  document.querySelector('link[rel="canonical"]')?.setAttribute('href', `https://billable-receipt-split.sociobot.in${pathname}`);
+  document.querySelector('link[rel="canonical"]')?.setAttribute('href', `https://billable-receipt-split.sociobot.in${canonicalPath}`);
   document.querySelector('meta[property="og:title"]')?.setAttribute('content', page[0]);
   document.querySelector('meta[property="og:description"]')?.setAttribute('content', page[1]);
   document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', page[0]);
@@ -84,7 +89,7 @@ function shell(content: string): string {
     <main id="main" tabindex="-1">${content}</main>
     <footer>
       <span>Receipt data stays in this browser. Purchase and license checks contact Sociobot only when you choose them.</span>
-      <span><a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a> · <a href="https://sociobot.in" rel="external">Built by Param Factory</a> · v1.1.0</span>
+      <span><a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a> · <a href="https://sociobot.in" rel="external">Built by Param Factory</a> · v1.2.0</span>
     </footer>
     <div id="route-announcement" class="sr-only" aria-live="polite"></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
     ${newReceiptDialog()}
@@ -158,6 +163,22 @@ function dashboard(): string {
   <section class="receipt-index" aria-labelledby="receipts-title">
     <div class="section-heading"><div><div class="eyebrow">Saved receipts: ${receipts.length}</div><h2 id="receipts-title">Recent receipts</h2></div>${receipts.length ? '<button class="button button-quiet" data-new-receipt>Add receipt</button>' : ''}</div>
     ${receipts.length ? `<ul class="receipt-list">${cards}</ul>` : `<div class="empty-state"><span class="empty-pixel">＋</span><div><h3>No receipts saved yet</h3><p>Add a supplier receipt to split its lines between jobs.</p></div><button class="button button-primary" data-new-receipt>Add a receipt</button></div>`}
+  </section>
+  <section class="landing-guide" aria-labelledby="how-it-works-title">
+    <div class="landing-section-intro"><div class="eyebrow">Three steps</div><h2 id="how-it-works-title">How it works</h2></div>
+    <ol class="workflow-list">
+      <li><span class="workflow-number">01</span><div><h3>Capture the source receipt</h3><p>Keep the supplier photo with every split.</p></div></li>
+      <li><span class="workflow-number">02</span><div><h3>Split each item by job</h3><p>Enter each item, then divide its amount between jobs.</p></div></li>
+      <li><span class="workflow-number">03</span><div><h3>Export records by job</h3><p>Download a CSV or PDF for each job.</p></div></li>
+    </ol>
+  </section>
+  <section class="landing-boundary" aria-labelledby="scope-title">
+    <div><div class="eyebrow">Manual record keeping</div><h2 id="scope-title">What Billable Split does not do</h2><p>Enter receipt lines yourself. It does not read receipt text automatically.</p><p>Review each amount before using an export for bookkeeping or tax work.</p></div>
+    <div class="boundary-facts"><p>Receipt data stays in this browser.</p><p>Purchase and license checks contact Sociobot only when you choose them.</p><a href="/privacy/">Read the privacy details</a></div>
+  </section>
+  <section class="landing-price" aria-labelledby="price-title">
+    <div><div class="eyebrow">One-time license</div><h2 id="price-title">Free and paid use</h2><p>Five receipts are free. A $19 one-time license removes only the receipt limit.</p></div>
+    <a class="button button-primary" href="/settings" data-route>View data and license options</a>
   </section>`;
 }
 
@@ -257,7 +278,7 @@ function settings(): string {
       <small>Sociobot / Dodo is the merchant of record. Refunds are handled there and revoke the license. <a href="/terms/">Terms</a> apply.</small>
     </section>`;
   return `<section class="settings-page">
-    <div class="eyebrow">Device control panel</div><h1>Your data, your key.</h1><p class="lede">Back up every receipt and image in one password-encrypted file. Nothing is uploaded.</p>
+    <div class="eyebrow">Device control panel</div><h1>Back up or restore receipt data</h1><p class="lede">Back up every receipt and image in one password-encrypted file. Nothing is uploaded.</p>
     <div class="settings-grid">
       <section aria-labelledby="backup-title"><span class="setting-icon">${icon('shield')}</span><h2 id="backup-title">Encrypted backup</h2><p>AES-256-GCM encryption protects the source images and allocations in the downloaded file. Keep the password somewhere safe—we cannot recover it.</p>
         <form data-action="backup" class="form-stack"><label><span>Backup password</span><input name="password" type="password" minlength="10" autocomplete="new-password" required /></label><button class="button button-primary" type="submit">Download encrypted backup ${icon('download')}</button></form>

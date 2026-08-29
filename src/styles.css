@@ -115,6 +115,25 @@ footer a { min-width: 44px; min-height: 44px; display: inline-flex; align-items:
 .empty-state .button { margin-left: auto; }
 .empty-pixel { width: 64px; height: 64px; flex: 0 0 auto; display: grid; place-items: center; background: var(--ink); color: var(--accent); font-size: 2rem; }
 
+.landing-guide { padding: 72px clamp(20px, 5vw, 80px); display: grid; grid-template-columns: minmax(220px, .62fr) minmax(0, 1.38fr); gap: clamp(32px, 7vw, 104px); border-top: 1px solid var(--line); background: #101411; }
+.landing-section-intro h2, .landing-boundary h2, .landing-price h2 { margin-bottom: 14px; }
+.landing-section-intro p { margin-bottom: 0; }
+.workflow-list { margin: 0; padding: 0; display: grid; list-style: none; border-top: 1px solid var(--line); }
+.workflow-list li { min-height: 118px; padding: 22px 0; display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 18px; border-bottom: 1px solid var(--line); }
+.workflow-number { width: 48px; height: 48px; display: grid; place-items: center; border: 1px solid var(--accent); color: var(--accent); font: 800 .82rem ui-monospace, monospace; box-shadow: 4px 4px 0 var(--shadow); }
+.workflow-list h3 { margin: 3px 0 7px; }
+.workflow-list p { margin: 0; }
+.landing-boundary { padding: 72px clamp(20px, 5vw, 80px); display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, .72fr); gap: clamp(32px, 7vw, 104px); background: #151917; }
+.landing-boundary > div > p:last-child { margin-bottom: 0; }
+.boundary-facts { align-self: end; padding: 22px; border: 1px solid #59645d; background: #0e1210; }
+.boundary-facts p { margin-bottom: 14px; }
+.boundary-facts p::before { content: '■'; margin-right: 9px; color: var(--accent); }
+.boundary-facts a { min-height: 44px; display: inline-flex; align-items: center; font-weight: 750; }
+.landing-price { padding: 56px clamp(20px, 5vw, 80px); display: flex; align-items: center; justify-content: space-between; gap: 28px; border-top: 1px solid #b7b29f; background: var(--paper); color: var(--ink); }
+.landing-price .eyebrow, .landing-price p { color: var(--ink-muted); }
+.landing-price p { margin-bottom: 0; }
+.landing-price .button { flex: 0 0 auto; }
+
 dialog { width: min(650px, calc(100% - 28px)); max-height: calc(100vh - 28px); padding: 32px; border: 1px solid #556059; border-radius: 0; overflow-y: auto; background: var(--surface); color: var(--text); box-shadow: 12px 12px 0 rgba(0,0,0,.65); }
 dialog::backdrop { background: rgba(2,4,3,.84); }
 .dialog-close { position: absolute; top: 10px; right: 10px; }
@@ -226,6 +245,7 @@ input:invalid:not(:placeholder-shown) { border-color: var(--danger); }
 @media (max-width: 900px) {
   .dashboard { min-height: auto; grid-template-columns: 1fr; padding-top: 48px; }
   .hero-art { max-width: 680px; }
+  .landing-guide, .landing-boundary { grid-template-columns: 1fr; gap: 32px; }
   .workspace-top { grid-template-columns: 1fr auto; }
   .step-rail { grid-row: 2; grid-column: 1 / -1; justify-self: center; }
   .workspace-grid { grid-template-columns: 1fr; }
@@ -247,6 +267,10 @@ input:invalid:not(:placeholder-shown) { border-color: var(--danger); }
   .hero-actions { align-items: flex-start; flex-direction: column; }
   .hero-art figcaption { gap: 6px; }
   .receipt-index { padding: 42px 20px 64px; }
+  .landing-guide, .landing-boundary { padding: 52px 20px; }
+  .workflow-list li { min-height: 0; grid-template-columns: 58px minmax(0, 1fr); gap: 14px; }
+  .landing-price { padding: 42px 20px; align-items: flex-start; flex-direction: column; }
+  .landing-price .button { width: 100%; }
   .section-heading { align-items: flex-start; }
   .receipt-card { grid-template-columns: 56px 1fr 26px; gap: 12px; }
   .receipt-date { width: 52px; height: 52px; }

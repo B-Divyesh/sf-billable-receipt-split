@@ -18,7 +18,7 @@ Open <https://billable-receipt-split.sociobot.in/demo> to see a completed materi
 - Download a CSV or PDF for each job. The PDF includes the receipt image and its tamper-check value.
 - Keeps receipts in this browser, shows changes, lets you delete them permanently, and works after an offline reload.
 - Download one password-protected backup of your receipts and images.
-- Store five receipts for free. A $19 one-time Sociobot license removes the limit.
+- Store five receipts for free. A $19 one-time Sociobot license removes only the receipt limit.
 
 It does not read receipt text automatically, reconcile bank accounts, do bookkeeping, or give tax advice.
 
