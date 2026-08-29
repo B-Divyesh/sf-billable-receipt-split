@@ -3,7 +3,7 @@
   "name": "Billable Split",
   "short_name": "Billable Split",
   "description": "Split supplier receipts across jobs and export job cost records offline.",
-  "start_url": "/?v=4",
+  "start_url": "/?v=5",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0b0d0c",

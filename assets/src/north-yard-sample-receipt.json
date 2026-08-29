@@ -1,0 +1,8 @@
+{
+  "asset": "North Yard Supply sample receipt",
+  "method": "Hand-authored SVG rendered to PNG",
+  "date": "2026-08-29",
+  "purpose": "Deterministic demo source record matching the seeded line items and total",
+  "license": "Original project asset; MIT",
+  "notes": "Fictional supplier and payment details. Marked SAMPLE RECEIPT — NOT FOR PAYMENT."
+}

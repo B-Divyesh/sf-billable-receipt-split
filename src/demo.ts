@@ -2,11 +2,13 @@ import { clearReceipts, listReceipts, saveReceipt } from './db';
 import type { Receipt } from './types';
 import { sha256 } from './utils';
 
-const SAMPLE_PNG = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='), (value) => value.charCodeAt(0));
+const SAMPLE_RECEIPT_URL = '/assets/north-yard-sample-receipt-d45ecb57.png';
 const DEMO_SEEDED_KEY = 'demo:billable-split:seeded';
 
 export async function sampleReceipt(): Promise<Receipt> {
-  const blob = new Blob([SAMPLE_PNG], { type: 'image/png' });
+  const response = await fetch(SAMPLE_RECEIPT_URL);
+  if (!response.ok) throw new Error('The sample receipt image could not be loaded. Reload and try again.');
+  const blob = await response.blob();
   const now = '2026-08-28T09:30:00.000Z';
   return {
     id: 'demo-north-yard-2026-08-28', supplier: 'North Yard Supply', purchasedOn: '2026-08-26', currency: 'USD', totalCents: 50175,

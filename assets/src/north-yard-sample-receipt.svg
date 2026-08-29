@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1100" viewBox="0 0 720 1100">
+  <rect width="720" height="1100" fill="#f4efd9"/>
+  <path d="M0 0h720v24l-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10z" fill="#0b0d0c" opacity=".08"/>
+  <g fill="#151917" font-family="DejaVu Sans Mono, monospace">
+    <text x="360" y="105" text-anchor="middle" font-size="42" font-weight="700">NORTH YARD SUPPLY</text>
+    <text x="360" y="142" text-anchor="middle" font-size="20">1420 INDUSTRIAL ROAD</text>
+    <text x="360" y="172" text-anchor="middle" font-size="20">SAMPLE RECEIPT — NOT FOR PAYMENT</text>
+    <path d="M58 210h604" stroke="#151917" stroke-width="3" stroke-dasharray="14 10"/>
+    <text x="58" y="255" font-size="22">RECEIPT</text><text x="662" y="255" text-anchor="end" font-size="22">NY-0826-417</text>
+    <text x="58" y="292" font-size="22">DATE</text><text x="662" y="292" text-anchor="end" font-size="22">2026-08-26</text>
+    <text x="58" y="329" font-size="22">CURRENCY</text><text x="662" y="329" text-anchor="end" font-size="22">USD</text>
+    <path d="M58 370h604" stroke="#151917" stroke-width="3"/>
+    <text x="58" y="413" font-size="20" font-weight="700">ITEM</text><text x="662" y="413" text-anchor="end" font-size="20" font-weight="700">AMOUNT</text>
+    <path d="M58 435h604" stroke="#151917" stroke-width="2"/>
+    <text x="58" y="487" font-size="23">12MM PLYWOOD SHEETS</text><text x="662" y="487" text-anchor="end" font-size="23">$300.00</text>
+    <text x="58" y="555" font-size="23">EXTERIOR SCREWS + ANCHORS</text><text x="662" y="555" text-anchor="end" font-size="23">$126.75</text>
+    <text x="58" y="623" font-size="23">SAFETY GLOVES</text><text x="662" y="623" text-anchor="end" font-size="23">$75.00</text>
+    <path d="M58 670h604" stroke="#151917" stroke-width="3" stroke-dasharray="14 10"/>
+    <text x="58" y="730" font-size="25" font-weight="700">TOTAL</text><text x="662" y="730" text-anchor="end" font-size="31" font-weight="700">$501.75</text>
+    <text x="58" y="782" font-size="19">PAYMENT</text><text x="662" y="782" text-anchor="end" font-size="19">SAMPLE CARD •••• 2084</text>
+    <path d="M58 830h604" stroke="#151917" stroke-width="3"/>
+    <text x="360" y="895" text-anchor="middle" font-size="21">MATERIALS FOR THREE JOBS</text>
+    <text x="360" y="930" text-anchor="middle" font-size="21">CHECK EACH SPLIT BEFORE EXPORT</text>
+    <rect x="282" y="968" width="156" height="52" fill="#151917"/>
+    <text x="360" y="1002" text-anchor="middle" font-size="19" font-weight="700" fill="#8df5b2">SAMPLE</text>
+  </g>
+</svg>

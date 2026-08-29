@@ -53,3 +53,10 @@ All ordinary text/background pairings target WCAG AA (4.5:1 or better); state is
 - Delivery: source PNG and prompt sidecar in `assets/src/`; content-hashed 768px and 480px responsive WebP files in `public/assets/` (25 KB and 12 KB), explicit dimensions in markup.
 
 App icons and UI glyphs are hand-authored SVG/geometric CSS using the same pixel grid. No stock art, third-party icons, CDN fonts, or external runtime assets.
+
+### `north-yard-sample-receipt-d45ecb57.png`
+
+- Purpose: the fictional source receipt shown in the isolated demo and embedded in sample PDF exports.
+- Method: hand-authored SVG rendered deterministically to a 720 × 1100 PNG in Chromium on 2026-08-29.
+- Content: North Yard Supply, three material lines, and a $501.75 total matching the demo data. It is visibly marked “Sample receipt — not for payment.”
+- Provenance: original for this product; no model, stock asset, brand, or third-party source. The editable SVG and metadata sidecar live in `assets/src/`.

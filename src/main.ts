@@ -95,7 +95,7 @@ function shell(content: string): string {
     <main id="main" tabindex="-1">${content}</main>
     <footer>
       <span>Receipt data stays in this browser. Purchase and license checks contact Sociobot only when you choose them.</span>
-      <span><a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a> · <a href="https://sociobot.in" rel="external">Built by Param Factory</a> · v1.3.0</span>
+      <span><a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a> · <a href="https://sociobot.in" rel="external">Built by Param Factory</a> · v1.3.1</span>
     </footer>
     <div id="route-announcement" class="sr-only" aria-live="polite"></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
     ${newReceiptDialog()}

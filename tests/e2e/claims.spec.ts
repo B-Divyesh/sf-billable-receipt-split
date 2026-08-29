@@ -47,7 +47,9 @@ test('@claim:source-retention shows the sample source image and tamper-check val
   await page.goto('/demo');
   await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'North Yard Supply' })).toBeVisible();
-  await expect(page.getByRole('img', { name: /Source receipt from North Yard Supply/ })).toBeVisible();
+  const sourceImage = page.getByRole('img', { name: /Source receipt from North Yard Supply/ });
+  await expect(sourceImage).toBeVisible();
+  await expect.poll(() => sourceImage.evaluate((image: HTMLImageElement) => ({ width: image.naturalWidth, height: image.naturalHeight }))).toEqual({ width: 720, height: 1100 });
   await expect(page.locator('.source-meta dd').last()).toHaveText(/^[a-f0-9]{64}$/);
 });
 
@@ -193,9 +195,14 @@ test('@claim:encrypted-backup downloads encrypted data instead of receipt text',
 
 test('@claim:backup-image-check rejects a mismatched encrypted image and keeps sample data', async ({ page }) => {
   await page.goto('/demo/settings');
+  await expect(page.getByRole('heading', { name: 'Back up or restore receipt data' })).toBeVisible();
   const backup = await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => { const open = indexedDB.open('demo:billable-split'); open.onsuccess = () => resolve(open.result); open.onerror = () => reject(open.error); });
     const receipt = await new Promise<any>((resolve, reject) => { const get = db.transaction('receipts').objectStore('receipts').get('demo-north-yard-2026-08-28'); get.onsuccess = () => resolve(get.result); get.onerror = () => reject(get.error); });
+    if (!receipt || !receipt.image?.blob || !Array.isArray(receipt.lines)) {
+      db.close();
+      throw new Error('The complete North Yard Supply sample was not ready.');
+    }
     db.close();
     const bytes = new Uint8Array(await receipt.image.blob.arrayBuffer());
     const encoded = btoa(String.fromCharCode(...bytes));

@@ -265,5 +265,5 @@ test('removes superseded service-worker caches', async ({ page }) => {
   await page.evaluate(async () => { await caches.open('billable-split-v8'); });
   await expect.poll(() => page.evaluate(() => caches.keys())).toContain('billable-split-v8');
   await page.reload();
-  await expect.poll(() => page.evaluate(() => caches.keys())).toEqual(['billable-split-v13']);
+  await expect.poll(() => page.evaluate(() => caches.keys())).toEqual(['billable-split-v14']);
 });
