@@ -107,7 +107,7 @@ export async function readEncryptedBackup(file: File, password: string): Promise
     const bytes = base64ToBytes(encoded);
     const blob = new Blob([bytes], { type: mime });
     if (await sha256(blob) !== receipt.image.sha256) {
-      throw new Error('A source image fingerprint does not match this backup. Nothing was restored.');
+      throw new Error('A receipt image does not match its tamper-check value. Nothing was restored.');
     }
     try {
       await validateReceiptImage(blob);

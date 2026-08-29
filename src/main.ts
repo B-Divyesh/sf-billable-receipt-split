@@ -39,6 +39,11 @@ function routeForCurrentView(): string {
   return demoMode ? `/demo${demoLimited ? '?free=1' : ''}` : '/';
 }
 
+function productTitle(label: string): string {
+  const suffix = ' — Billable Split';
+  return `${label.slice(0, 60 - suffix.length).trimEnd()}${suffix}`;
+}
+
 async function navigate(path: string, replace = false): Promise<void> {
   const url = new URL(path, location.origin);
   const next = `${url.pathname}${url.search}`;
@@ -58,7 +63,7 @@ function applyMetadata(): void {
   const page = isDemoLanding ? ['Demo — Billable Split', 'Try a completed supplier receipt split with sample data.']
     : demoMode && view === 'settings' ? ['Demo settings — Billable Split', 'Review sample backup and license controls without using real data.']
     : view === 'settings' ? ['Data and license — Billable Split', 'Back up receipt data or restore a purchase license.']
-    : view === 'receipt' && activeReceipt ? [`${activeReceipt.supplier} — Billable Split`, 'Split this supplier receipt between jobs and export job costs.']
+    : view === 'receipt' && activeReceipt ? [productTitle(activeReceipt.supplier), 'Split this supplier receipt between jobs and export job costs.']
     : view === 'not-found' ? ['Page not found — Billable Split', 'The page you requested is not available.']
     : ['Billable Split — split receipt costs by job', 'Split one supplier receipt across jobs and export job cost records.'];
   document.title = page[0];
@@ -66,6 +71,7 @@ function applyMetadata(): void {
   document.querySelector('link[rel="canonical"]')?.setAttribute('href', `https://billable-receipt-split.sociobot.in${canonicalPath}`);
   document.querySelector('meta[property="og:title"]')?.setAttribute('content', page[0]);
   document.querySelector('meta[property="og:description"]')?.setAttribute('content', page[1]);
+  document.querySelector('meta[property="og:url"]')?.setAttribute('content', `https://billable-receipt-split.sociobot.in${canonicalPath}`);
   document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', page[0]);
   document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', page[1]);
 }
@@ -89,7 +95,7 @@ function shell(content: string): string {
     <main id="main" tabindex="-1">${content}</main>
     <footer>
       <span>Receipt data stays in this browser. Purchase and license checks contact Sociobot only when you choose them.</span>
-      <span><a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a> · <a href="https://sociobot.in" rel="external">Built by Param Factory</a> · v1.2.0</span>
+      <span><a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a> · <a href="https://sociobot.in" rel="external">Built by Param Factory</a> · v1.3.0</span>
     </footer>
     <div id="route-announcement" class="sr-only" aria-live="polite"></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
     ${newReceiptDialog()}
@@ -99,9 +105,9 @@ function shell(content: string): string {
 function newReceiptDialog(): string {
   return `<dialog id="new-receipt-dialog" aria-labelledby="new-receipt-title">
     <form method="dialog" class="dialog-close"><button value="cancel" aria-label="Close new receipt dialog">×</button></form>
-    <div class="eyebrow">New source record</div>
+    <div class="eyebrow">New receipt</div>
     <h2 id="new-receipt-title">Capture the receipt</h2>
-    <p class="dialog-intro">Take a photo or choose an image. Billable Split fingerprints it before you add costs.</p>
+    <p class="dialog-intro">Take a photo or choose an image. Billable Split adds a tamper-check value before you enter costs.</p>
     <form data-action="create-receipt" class="form-stack">
       <label class="upload-zone">
         <span class="upload-icon">▦</span>
@@ -117,7 +123,7 @@ function newReceiptDialog(): string {
       </div>
       <label><span>Note <span class="optional">optional</span></span><input name="note" maxlength="160" placeholder="PO, card, or context" /></label>
       <p class="form-error" aria-live="assertive"></p>
-      <button class="button button-primary button-wide" type="submit">Fingerprint & continue ${icon('plus')}</button>
+      <button class="button button-primary button-wide" type="submit">Save receipt & continue ${icon('plus')}</button>
     </form>
   </dialog>`;
 }
@@ -188,7 +194,7 @@ function allocationRow(receipt: Receipt, lineId: string, allocation: Receipt['li
     <label><span>Amount</span><input name="amount" type="number" inputmode="decimal" min="0.01" max="${MAX_AMOUNT}" step="0.01" value="${(allocation.amountCents / 100).toFixed(2)}" required /></label>
     <label><span>Status</span><select name="type">${Object.entries(COST_LABELS).map(([value, label]) => `<option value="${value}" ${allocation.type === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
     <button class="button button-small" type="submit">Save</button>
-    <button class="icon-button danger" type="button" data-delete-allocation="${allocation.id}" data-line-id="${lineId}" aria-label="Delete ${escapeHtml(allocation.job)} allocation">${icon('trash')}</button>
+    <button class="icon-button danger" type="button" data-delete-allocation="${allocation.id}" data-line-id="${lineId}" aria-label="Delete ${escapeHtml(allocation.job)} job split">${icon('trash')}</button>
   </form>`;
 }
 
@@ -203,7 +209,7 @@ function receiptDetail(receipt: Receipt): string {
     return `<li class="line-card">
       <div class="line-summary">
         <span class="line-number">${String(index + 1).padStart(2, '0')}</span>
-        <div><strong>${escapeHtml(line.description)}</strong><small>${line.allocations.length ? `${line.allocations.length} allocation${line.allocations.length === 1 ? '' : 's'}` : 'Not allocated yet'}</small></div>
+        <div><strong>${escapeHtml(line.description)}</strong><small>${line.allocations.length ? `${line.allocations.length} job split${line.allocations.length === 1 ? '' : 's'}` : 'Not split yet'}</small></div>
         <span class="line-amount">${money(line.amountCents, receipt.currency)}<small class="${remaining === 0 ? 'text-success' : remaining < 0 ? 'text-danger' : 'text-warning'}">${remaining === 0 ? 'Balanced' : `${money(Math.abs(remaining), receipt.currency)} ${remaining < 0 ? 'over' : 'left'}`}</small></span>
         <button class="button button-small" type="button" data-toggle-line="${line.id}" aria-expanded="true">Edit split</button>
       </div>
@@ -234,14 +240,14 @@ function receiptDetail(receipt: Receipt): string {
       <span class="status ${status.className}"><i></i>${status.label}</span>
     </div>
     <div class="receipt-heading">
-      <div><div class="eyebrow">${escapeHtml(receipt.purchasedOn)} / ${escapeHtml(receipt.currency)}</div><h1>${escapeHtml(receipt.supplier)}</h1><p>${escapeHtml(receipt.note || 'Supplier receipt allocation')}</p></div>
+      <div><div class="eyebrow">${escapeHtml(receipt.purchasedOn)} / ${escapeHtml(receipt.currency)}</div><h1>${escapeHtml(receipt.supplier)}</h1><p>${escapeHtml(receipt.note || 'Supplier receipt split')}</p></div>
       <div class="receipt-total"><small>Source total</small><strong>${money(receipt.totalCents, receipt.currency)}</strong></div>
     </div>
     <div class="workspace-grid">
       <aside class="source-panel" aria-labelledby="source-title">
-        <div class="panel-title"><div><div class="eyebrow">Locked source</div><h2 id="source-title">Receipt image</h2></div><span title="Source image fingerprinted">${icon('shield')}</span></div>
+        <div class="panel-title"><div><div class="eyebrow">Original receipt</div><h2 id="source-title">Receipt image</h2></div><span title="Source image has a tamper-check value">${icon('shield')}</span></div>
         <img src="${objectUrl}" alt="Source receipt from ${escapeHtml(receipt.supplier)}" />
-        <dl class="source-meta"><div><dt>Original</dt><dd>${escapeHtml(receipt.image.filename)}</dd></div><div><dt>SHA-256</dt><dd title="${receipt.image.sha256}">${receipt.image.sha256}</dd></div></dl>
+        <dl class="source-meta"><div><dt>Original file</dt><dd>${escapeHtml(receipt.image.filename)}</dd></div><div><dt>Tamper-check value</dt><dd title="${receipt.image.sha256}">${receipt.image.sha256}</dd></div></dl>
       </aside>
       <section class="ledger-panel" aria-labelledby="ledger-title">
         <div class="panel-title ledger-title"><div><div class="eyebrow">Allocation ledger</div><h2 id="ledger-title">Receipt lines</h2></div><span class="ledger-tally">${money(lineTotal, receipt.currency)} / ${money(receipt.totalCents, receipt.currency)}</span></div>
@@ -256,11 +262,11 @@ function receiptDetail(receipt: Receipt): string {
       </section>
     </div>
     <section class="export-panel" aria-labelledby="export-title">
-      <div><div class="eyebrow">Evidence packets</div><h2 id="export-title">Export by job</h2><p>${exportable ? 'Every packet includes the immutable source-image fingerprint.' : 'Balance every line and the source total before exporting evidence.'}</p></div>
+      <div><div class="eyebrow">Job cost records</div><h2 id="export-title">Export by job</h2><p>${exportable ? 'Every PDF includes the receipt image and its tamper-check value.' : 'Balance every line and the receipt total before exporting.'}</p></div>
       ${allJobs.length ? `<ul class="job-list">${allJobs.map((job) => {
         const total = receipt.lines.flatMap((line) => line.allocations).filter((allocation) => allocation.job === job).reduce((sum, allocation) => sum + allocation.amountCents, 0);
         return `<li><span><strong>${escapeHtml(job)}</strong><small>${money(total, receipt.currency)} allocated</small></span><button class="button button-secondary" data-export-csv="${escapeHtml(job)}" ${exportable ? '' : 'disabled'}>CSV ${icon('download')}</button><button class="button button-primary" data-export-pdf="${escapeHtml(job)}" ${exportable ? '' : 'disabled'}>PDF ${icon('download')}</button></li>`;
-      }).join('')}</ul>` : '<div class="export-empty">Add a job allocation to make its CSV and PDF packet.</div>'}
+      }).join('')}</ul>` : '<div class="export-empty">Add a job split to make its CSV and PDF.</div>'}
     </section>
     <details class="history-panel"><summary>Receipt history <span>${receipt.history.length} events</span></summary><ol>${receipt.history.slice(0, 12).map((event) => `<li><time>${new Date(event.at).toLocaleString()}</time>${escapeHtml(event.label)}</li>`).join('')}</ol></details>
     <div class="danger-zone"><div><strong>Delete this receipt</strong><span>Removes the image, splits, and history from this device.</span></div><button class="button button-danger" data-delete-receipt>Delete permanently</button></div>
@@ -280,7 +286,7 @@ function settings(): string {
   return `<section class="settings-page">
     <div class="eyebrow">Device control panel</div><h1>Back up or restore receipt data</h1><p class="lede">Back up every receipt and image in one password-encrypted file. Nothing is uploaded.</p>
     <div class="settings-grid">
-      <section aria-labelledby="backup-title"><span class="setting-icon">${icon('shield')}</span><h2 id="backup-title">Encrypted backup</h2><p>AES-256-GCM encryption protects the source images and allocations in the downloaded file. Keep the password somewhere safe—we cannot recover it.</p>
+      <section aria-labelledby="backup-title"><span class="setting-icon">${icon('shield')}</span><h2 id="backup-title">Encrypted backup</h2><p>The downloaded file protects receipt images and job splits with your password. Keep it somewhere safe—we cannot recover it.</p>
         <form data-action="backup" class="form-stack"><label><span>Backup password</span><input name="password" type="password" minlength="10" autocomplete="new-password" required /></label><button class="button button-primary" type="submit">Download encrypted backup ${icon('download')}</button></form>
       </section>
       <section aria-labelledby="restore-title"><span class="setting-icon">↺</span><h2 id="restore-title">Restore backup</h2><p>Restoring replaces the receipts currently on this device. The backup is checked and decrypted before anything changes.</p>
@@ -348,7 +354,7 @@ async function createReceipt(form: HTMLFormElement): Promise<void> {
   busy = true;
   const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
   const buttonContent = button?.innerHTML;
-  if (button) { button.disabled = true; button.textContent = 'Fingerprinting source…'; }
+  if (button) { button.disabled = true; button.textContent = 'Checking receipt…'; }
   try {
     const mime = await validateReceiptImage(file);
     const now = new Date().toISOString();
@@ -356,9 +362,9 @@ async function createReceipt(form: HTMLFormElement): Promise<void> {
       id: uid(), supplier: String(data.get('supplier')).trim(), purchasedOn: String(data.get('purchasedOn')),
       currency: String(data.get('currency')), totalCents: cents(data.get('total')), note: String(data.get('note') ?? '').trim(),
       image: { blob: file, filename: file.name, mime, sha256: await sha256(file) }, lines: [],
-      history: [{ id: uid(), at: now, label: 'Source receipt captured and fingerprinted' }], createdAt: now, updatedAt: now,
+      history: [{ id: uid(), at: now, label: 'Receipt saved with tamper-check value' }], createdAt: now, updatedAt: now,
     };
-    await saveReceipt(receipt); receipts = await listReceipts(); activeReceipt = receipt; view = 'receipt'; navigate(routeForCurrentView()); toast('Source locked. Add its receipt lines.');
+    await saveReceipt(receipt); receipts = await listReceipts(); activeReceipt = receipt; view = 'receipt'; navigate(routeForCurrentView()); toast('Receipt saved. Add its lines.');
   } catch (error) { errorFor(form, error instanceof Error ? error.message : 'The receipt could not be saved.'); }
   finally {
     busy = false;
@@ -385,17 +391,17 @@ app.addEventListener('click', async (event) => {
   const toggle = target.closest<HTMLButtonElement>('[data-toggle-line]');
   if (toggle) { const editor = document.querySelector<HTMLElement>(`#line-${toggle.dataset.toggleLine}`); if (editor) { editor.hidden = !editor.hidden; toggle.setAttribute('aria-expanded', String(!editor.hidden)); toggle.textContent = editor.hidden ? 'Edit split' : 'Hide split'; } return; }
   const deleteLineButton = target.closest<HTMLElement>('[data-delete-line]');
-  if (deleteLineButton?.dataset.deleteLine && activeReceipt && confirm('Delete this line and all of its job allocations?')) {
+  if (deleteLineButton?.dataset.deleteLine && activeReceipt && confirm('Delete this line and all of its job splits?')) {
     activeReceipt.lines = activeReceipt.lines.filter((line) => line.id !== deleteLineButton.dataset.deleteLine); await persist('Receipt line deleted'); return;
   }
   const deleteAllocationButton = target.closest<HTMLElement>('[data-delete-allocation]');
   if (deleteAllocationButton?.dataset.deleteAllocation && activeReceipt) {
     const line = activeReceipt.lines.find((item) => item.id === deleteAllocationButton.dataset.lineId);
-    if (line) { line.allocations = line.allocations.filter((item) => item.id !== deleteAllocationButton.dataset.deleteAllocation); await persist('Job allocation deleted'); } return;
+    if (line) { line.allocations = line.allocations.filter((item) => item.id !== deleteAllocationButton.dataset.deleteAllocation); await persist('Job split deleted'); } return;
   }
   if (target.closest('[data-delete-receipt]') && activeReceipt) {
     const supplier = activeReceipt.supplier;
-    if (confirm(`Permanently delete the ${supplier} receipt, its source image, and every allocation? This cannot be undone.`)) {
+    if (confirm(`Permanently delete the ${supplier} receipt, its image, and every job split? This cannot be undone.`)) {
       await deleteReceipt(activeReceipt.id); receipts = await listReceipts(); activeReceipt = null; view = 'home'; await navigate(demoMode ? '/demo/list' : '/'); toast(`${supplier} receipt permanently deleted`);
     } return;
   }
@@ -431,7 +437,7 @@ app.addEventListener('submit', async (event) => {
         const nextAmount = cents(data.get('amount'));
         const allocated = line.allocations.reduce((sum, item) => sum + item.amountCents, 0);
         if (nextAmount < allocated) {
-          errorFor(form, `Line total cannot be less than its ${money(allocated, activeReceipt.currency)} of allocations. Reconcile the splits first.`);
+          errorFor(form, `Line total cannot be less than its ${money(allocated, activeReceipt.currency)} of job splits. Reconcile the splits first.`);
           return;
         }
         line.description = String(data.get('description')).trim(); line.amountCents = nextAmount; await persist('Receipt line updated');
@@ -440,11 +446,11 @@ app.addEventListener('submit', async (event) => {
     }
     if (action === 'add-allocation' && activeReceipt) {
       const line = activeReceipt.lines.find((item) => item.id === form.dataset.lineId);
-      if (line) { const amount = cents(data.get('amount')); const allocated = line.allocations.reduce((sum, item) => sum + item.amountCents, 0); if (allocated + amount > line.amountCents) { errorFor(form, `This is ${money(allocated + amount - line.amountCents, activeReceipt.currency)} over the line total.`); return; } line.allocations.push({ id: uid(), job: String(data.get('job')).trim(), amountCents: amount, type: String(data.get('type')) as CostType }); await persist('Job allocation added'); } return;
+      if (line) { const amount = cents(data.get('amount')); const allocated = line.allocations.reduce((sum, item) => sum + item.amountCents, 0); if (allocated + amount > line.amountCents) { errorFor(form, `This is ${money(allocated + amount - line.amountCents, activeReceipt.currency)} over the line total.`); return; } line.allocations.push({ id: uid(), job: String(data.get('job')).trim(), amountCents: amount, type: String(data.get('type')) as CostType }); await persist('Job split added'); } return;
     }
     if (action === 'edit-allocation' && activeReceipt) {
       const line = activeReceipt.lines.find((item) => item.id === form.dataset.lineId); const allocation = line?.allocations.find((item) => item.id === form.dataset.allocationId);
-      if (line && allocation) { const nextAmount = cents(data.get('amount')); const otherTotal = line.allocations.filter((item) => item.id !== allocation.id).reduce((sum, item) => sum + item.amountCents, 0); if (otherTotal + nextAmount > line.amountCents) { errorFor(form, `This is ${money(otherTotal + nextAmount - line.amountCents, activeReceipt.currency)} over the line total.`); return; } allocation.job = String(data.get('job')).trim(); allocation.amountCents = nextAmount; allocation.type = String(data.get('type')) as CostType; await persist('Job allocation updated'); } return;
+      if (line && allocation) { const nextAmount = cents(data.get('amount')); const otherTotal = line.allocations.filter((item) => item.id !== allocation.id).reduce((sum, item) => sum + item.amountCents, 0); if (otherTotal + nextAmount > line.amountCents) { errorFor(form, `This is ${money(otherTotal + nextAmount - line.amountCents, activeReceipt.currency)} over the line total.`); return; } allocation.job = String(data.get('job')).trim(); allocation.amountCents = nextAmount; allocation.type = String(data.get('type')) as CostType; await persist('Job split updated'); } return;
     }
     if (action === 'backup') { const password = String(data.get('password')); await createEncryptedBackup(receipts, password); form.reset(); toast('Encrypted backup downloaded'); return; }
     if (action === 'restore') {

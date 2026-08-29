@@ -1,5 +1,47 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+
+async function fillFreeSampleArchive(page: Page, idPrefix: string): Promise<void> {
+  await expect(page.getByRole('heading', { name: 'North Yard Supply' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Local storage is unavailable' })).toHaveCount(0);
+
+  const seed = await page.evaluate(async ({ idPrefix }) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const open = indexedDB.open('demo:billable-split');
+      open.onsuccess = () => resolve(open.result);
+      open.onerror = () => reject(open.error);
+    });
+    const items = await new Promise<any[]>((resolve, reject) => {
+      const get = db.transaction('receipts').objectStore('receipts').getAll();
+      get.onsuccess = () => resolve(get.result);
+      get.onerror = () => reject(get.error);
+    });
+    const base = items[0];
+    if (!base || base.id !== 'demo-north-yard-2026-08-28' || !Array.isArray(base.lines)) {
+      db.close();
+      throw new Error('The complete North Yard Supply sample was not ready.');
+    }
+    const transaction = db.transaction('receipts', 'readwrite');
+    for (let count = 2; count <= 5; count += 1) {
+      transaction.objectStore('receipts').put({
+        ...base,
+        id: `${idPrefix}-${count}`,
+        supplier: `Sample receipt ${count}`,
+        updatedAt: `2026-08-28T09:3${count}:00.000Z`,
+      });
+    }
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+    db.close();
+    return { id: base.id, lineCount: base.lines.length };
+  }, { idPrefix });
+
+  expect(seed).toEqual({ id: 'demo-north-yard-2026-08-28', lineCount: 3 });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Local storage is unavailable' })).toHaveCount(0);
+}
 
 test('@claim:source-retention shows the sample source image and tamper-check value', async ({ page }) => {
   await page.goto('/demo');
@@ -33,18 +75,13 @@ test('@claim:pdf-export downloads a PDF for the sample job', async ({ page }) =>
 
 test('@claim:free-receipt-limit blocks a sixth receipt and offers recovery', async ({ page }) => {
   await page.goto('/demo?free=1');
-  await page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => { const open = indexedDB.open('demo:billable-split'); open.onsuccess = () => resolve(open.result); open.onerror = () => reject(open.error); });
-    const items = await new Promise<any[]>((resolve, reject) => { const get = db.transaction('receipts').objectStore('receipts').getAll(); get.onsuccess = () => resolve(get.result); get.onerror = () => reject(get.error); });
-    const base = items[0]; const tx = db.transaction('receipts', 'readwrite');
-    for (let count = 2; count <= 5; count += 1) tx.objectStore('receipts').put({ ...base, id: `demo-limit-${count}`, supplier: `Sample receipt ${count}`, updatedAt: `2026-08-28T09:3${count}:00.000Z` });
-    await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); }); db.close();
-  });
-  await page.reload();
+  await fillFreeSampleArchive(page, 'demo-limit');
   await page.getByRole('link', { name: 'All receipts' }).click();
+  await expect(page.getByText('Saved receipts: 5')).toBeVisible();
   await page.getByRole('button', { name: 'Add receipt' }).click();
   await expect(page).toHaveURL(/\/demo\/settings\?free=1$/);
   await expect(page.getByText('The five-receipt sample archive is full')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Local storage is unavailable' })).toHaveCount(0);
 });
 
 test('@claim:receipt-data-local keeps demo storage isolated and sends no receipt data away', async ({ page, context }, testInfo) => {
@@ -75,15 +112,7 @@ test('@claim:offline-reload reloads the demo and exports while offline', async (
 
 test('@claim:license-removes-limit lets a $19 sample license add a sixth receipt while free exports work', async ({ page }) => {
   await page.goto('/demo?free=1');
-  await page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => { const open = indexedDB.open('demo:billable-split'); open.onsuccess = () => resolve(open.result); open.onerror = () => reject(open.error); });
-    const base = await new Promise<any>((resolve, reject) => { const get = db.transaction('receipts').objectStore('receipts').get('demo-north-yard-2026-08-28'); get.onsuccess = () => resolve(get.result); get.onerror = () => reject(get.error); });
-    const transaction = db.transaction('receipts', 'readwrite');
-    for (let count = 2; count <= 5; count += 1) transaction.objectStore('receipts').put({ ...base, id: `sample-license-${count}`, supplier: `Licensed sample ${count}` });
-    await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
-    db.close();
-  });
-  await page.reload();
+  await fillFreeSampleArchive(page, 'sample-license');
   const freeDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: /^CSV/ }).first().click();
   expect((await freeDownload).suggestedFilename()).toContain('.csv');
@@ -99,6 +128,7 @@ test('@claim:license-removes-limit lets a $19 sample license add a sixth receipt
   await page.goto('/demo/settings');
   await expect(page.getByText('Sample archive has no receipt limit')).toBeVisible();
   await expect(page.getByText(/valid \$19 license removes the five-receipt limit/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Local storage is unavailable' })).toHaveCount(0);
 });
 
 test('@claim:cost-classification keeps every cost status in the sample CSV', async ({ page }) => {
@@ -181,7 +211,7 @@ test('@claim:backup-image-check rejects a mismatched encrypted image and keeps s
   await restore.getByLabel('Backup file').setInputFiles({ name: 'mismatched.billsplit', mimeType: 'application/json', buffer: Buffer.from(backup) });
   await restore.getByLabel('Backup password').fill('correct-horse-battery');
   await restore.getByRole('button', { name: 'Check & restore backup' }).click();
-  await expect(restore.getByText('A source image fingerprint does not match this backup. Nothing was restored.')).toBeVisible();
+  await expect(restore.getByText('A receipt image does not match its tamper-check value. Nothing was restored.')).toBeVisible();
   await page.goto('/demo');
   await expect(page.getByRole('heading', { name: 'North Yard Supply' })).toBeVisible();
 });
@@ -195,7 +225,7 @@ test('@claim:manual-receipt-entry adds no extracted lines after an image upload'
   await page.getByLabel('Choose receipt image').setInputFiles({ name: 'manual-entry.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64') });
   await page.getByLabel('Supplier').fill('Manual Entry Supply');
   await page.getByLabel('Receipt total').fill('10.00');
-  await page.getByRole('button', { name: /Fingerprint & continue/ }).click();
+  await page.getByRole('button', { name: /Save receipt & continue/ }).click();
   await expect(page.getByRole('heading', { name: 'Manual Entry Supply' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Add the first receipt line' })).toBeVisible();
   await expect(page.locator('.line-card')).toHaveCount(0);
@@ -210,20 +240,46 @@ test('@claim:demo-isolation resets only sample data and starts with untouched re
     localStorage.setItem('sb_license_verdict:billable-receipt-split', JSON.stringify({ valid: true, checkedAt: 0 }));
   });
   page.on('request', request => { if (new URL(request.url()).origin !== origin) external.push(request.url()); });
-  await page.goto('/demo');
+  await page.goto('/?demo=1');
+  await expect(page).toHaveTitle('Demo — Billable Split');
+  await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'North Yard Supply' })).toBeVisible();
   await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => { const open = indexedDB.open('billable-split', 1); open.onupgradeneeded = () => open.result.createObjectStore('receipts', { keyPath: 'id' }); open.onsuccess = () => resolve(open.result); open.onerror = () => reject(open.error); });
     const transaction = database.transaction('receipts', 'readwrite');
     transaction.objectStore('receipts').put({ id: 'real-receipt', supplier: 'Untouched real receipt', purchasedOn: '2026-08-20', currency: 'USD', totalCents: 100, note: '', image: { blob: new Blob(['real'], { type: 'image/png' }), filename: 'real.png', mime: 'image/png', sha256: '0'.repeat(64) }, lines: [], history: [], createdAt: '2026-08-20T00:00:00.000Z', updatedAt: '2026-08-20T00:00:00.000Z' });
     await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); }); database.close();
   });
+  const sampleLine = page.locator('form.edit-line').first();
+  await sampleLine.getByLabel('Description').fill('Changed sample line');
+  await sampleLine.getByRole('button', { name: 'Save line' }).click();
+  await expect(page.locator('form.edit-line').first().getByLabel('Description')).toHaveValue('Changed sample line');
   await page.getByRole('button', { name: 'Reset demo' }).click();
   await expect(page.getByRole('heading', { name: 'North Yard Supply' })).toBeVisible();
+  await expect(page.locator('form.edit-line').first().getByLabel('Description')).toHaveValue('12mm plywood sheets');
+  await expect(page.locator('input[value="Changed sample line"]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Start for real' }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByLabel('Demo controls')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Untouched real receipt/ })).toBeVisible();
   await expect(page.evaluate(() => localStorage.getItem('sb_license:billable-receipt-split'))).resolves.toBe('real-license-token');
   await expect(page.evaluate(() => localStorage.getItem('sb_license_verdict:billable-receipt-split'))).resolves.toBe(JSON.stringify({ valid: true, checkedAt: 0 }));
+  const remainingDatabases = await page.evaluate(async () => (await indexedDB.databases()).map((database) => database.name));
+  expect(remainingDatabases).toContain('billable-split');
+  const remainingDemoReceipts = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const open = indexedDB.open('demo:billable-split');
+      open.onsuccess = () => resolve(open.result);
+      open.onerror = () => reject(open.error);
+    });
+    const receipts = await new Promise<any[]>((resolve, reject) => {
+      const get = database.transaction('receipts').objectStore('receipts').getAll();
+      get.onsuccess = () => resolve(get.result);
+      get.onerror = () => reject(get.error);
+    });
+    database.close();
+    return receipts.length;
+  });
+  expect(remainingDemoReceipts).toBe(0);
   expect(external).toEqual([]);
 });

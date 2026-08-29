@@ -53,7 +53,7 @@ describe('allocation evidence', () => {
     const receipt = sampleReceipt();
     expect(jobsFor(receipt)).toEqual(['Oak Street', 'Shop overhead']);
     const csv = csvForJob(receipt, 'Oak Street');
-    expect(csv).toContain('"Source image SHA-256","abc123"');
+    expect(csv).toContain('"Source image tamper-check (SHA-256)","abc123"');
     expect(csv).toContain('"Plywood","75.00","billable"');
     expect(csv).toContain('"Fasteners","25.00","reimbursable"');
     expect(csv).not.toContain('Shop overhead');

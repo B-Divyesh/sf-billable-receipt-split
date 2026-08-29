@@ -118,7 +118,7 @@ export function csvForJob(receipt: Receipt, job: string): string {
     ['Purchase date', receipt.purchasedOn],
     ['Source receipt total', (receipt.totalCents / 100).toFixed(2)],
     ['Currency', receipt.currency],
-    ['Source image SHA-256', receipt.image.sha256],
+    ['Source image tamper-check (SHA-256)', receipt.image.sha256],
     ['Job', job],
     [],
     ['Line description', 'Allocation amount', 'Cost status', 'Source line amount'],

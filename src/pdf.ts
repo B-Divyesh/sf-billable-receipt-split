@@ -14,7 +14,7 @@ export async function exportJobPdf(receipt: Receipt, job: string): Promise<void>
   doc.setTextColor(141, 245, 178);
   doc.setFont('courier', 'bold');
   doc.setFontSize(12);
-  doc.text('BILLABLE SPLIT / JOB COST PACKET', margin, y);
+  doc.text('BILLABLE SPLIT / JOB COST RECORD', margin, y);
   y = 104;
   doc.setTextColor(21, 25, 23);
   doc.setFont('helvetica', 'bold');
@@ -27,7 +27,7 @@ export async function exportJobPdf(receipt: Receipt, job: string): Promise<void>
   y += 20;
   doc.setFont('courier', 'normal');
   doc.setFontSize(8);
-  doc.text(`SOURCE IMAGE SHA-256: ${receipt.image.sha256}`, margin, y, { maxWidth: 500 });
+  doc.text(`TAMPER-CHECK VALUE (SHA-256): ${receipt.image.sha256}`, margin, y, { maxWidth: 500 });
   y += 28;
 
   const image = await imageToJpegDataUrl(receipt.image.blob);
@@ -73,6 +73,6 @@ export async function exportJobPdf(receipt: Receipt, job: string): Promise<void>
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(89, 97, 89);
-  doc.text(`Created locally by Billable Split on ${new Date().toLocaleString()}. Verify the source image against the SHA-256 fingerprint above.`, margin, y, { maxWidth: 500 });
-  doc.save(`${safeFilename(job)}-${receipt.purchasedOn}-cost-packet.pdf`);
+  doc.text(`Created locally by Billable Split on ${new Date().toLocaleString()}. Compare the receipt image with the tamper-check value above.`, margin, y, { maxWidth: 500 });
+  doc.save(`${safeFilename(job)}-${receipt.purchasedOn}-cost-record.pdf`);
 }

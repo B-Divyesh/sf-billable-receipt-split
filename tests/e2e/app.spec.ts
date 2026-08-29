@@ -18,7 +18,7 @@ test('creates, splits, persists, and works offline', async ({ page, context }, t
   });
   await page.getByLabel('Supplier').fill('North Yard Supply');
   await page.getByLabel('Receipt total').fill('42.50');
-  await page.getByRole('button', { name: /Fingerprint & continue/ }).click();
+  await page.getByRole('button', { name: /Save receipt & continue/ }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('North Yard Supply');
   await page.getByLabel('Line description').fill('Plywood');
   await page.getByLabel('Line total').last().fill('42.50');
@@ -56,7 +56,7 @@ test('downloads an encrypted local backup', async ({ page }) => {
   });
   await page.getByLabel('Supplier').fill('Backup Supply');
   await page.getByLabel('Receipt total').fill('10.00');
-  await page.getByRole('button', { name: /Fingerprint & continue/ }).click();
+  await page.getByRole('button', { name: /Save receipt & continue/ }).click();
   await page.getByRole('link', { name: 'All receipts' }).click();
   await page.getByRole('link', { name: 'Data & license' }).click();
   await expect(page.getByRole('link', { name: 'Buy once · $19' })).toHaveAttribute('href', 'https://api.sociobot.in/api/v1/products/billable-receipt-split/checkout');
@@ -134,11 +134,14 @@ test('uses Demo metadata for a cold sample route', async ({ page }) => {
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://billable-receipt-split.sociobot.in/demo');
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', 'Try a completed supplier receipt split with sample data.');
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Demo — Billable Split');
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'https://billable-receipt-split.sociobot.in/demo');
   await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'Demo — Billable Split');
 
   await page.goto('/?demo=1');
   await expect(page).toHaveTitle('Demo — Billable Split');
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://billable-receipt-split.sociobot.in/demo');
+  await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'North Yard Supply' })).toBeVisible();
 });
 
 test('keeps the static 404 in the shared navigation shell', async ({ page }) => {
@@ -150,6 +153,7 @@ test('keeps the static 404 in the shared navigation shell', async ({ page }) => 
   await expect(navigation.getByRole('link', { name: 'Demo' })).toHaveAttribute('href', '/demo');
   await expect(navigation.getByRole('link', { name: 'Data & license' })).toHaveAttribute('href', '/settings');
   await expect(navigation.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy/');
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'https://billable-receipt-split.sociobot.in/404');
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
 });
@@ -178,7 +182,7 @@ test('rejects unsafe money and non-image receipt sources', async ({ page }) => {
 
   await page.getByLabel('Receipt total').fill('10.00');
   await page.getByLabel('Choose receipt image').setInputFiles({ name: 'not-an-image.txt', mimeType: 'text/plain', buffer: Buffer.from('not an image') });
-  await page.getByRole('button', { name: /Fingerprint & continue/ }).click();
+  await page.getByRole('button', { name: /Save receipt & continue/ }).click();
   await expect(page.getByText('Choose a valid PNG, JPEG, WebP, or AVIF receipt image.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Capture the receipt' })).toBeVisible();
 });
@@ -189,7 +193,7 @@ test('rejects a line total below its allocations and disables exports for legacy
   await page.getByLabel('Choose receipt image').setInputFiles({ name: 'allocation-receipt.png', mimeType: 'image/png', buffer: RECEIPT_PNG });
   await page.getByLabel('Supplier').fill('Integrity Supply');
   await page.getByLabel('Receipt total').fill('100.00');
-  await page.getByRole('button', { name: /Fingerprint & continue/ }).click();
+  await page.getByRole('button', { name: /Save receipt & continue/ }).click();
 
   await page.getByLabel('Line description').fill('Shared materials');
   await page.getByLabel('Line total').last().fill('60.00');
@@ -221,7 +225,7 @@ test('rejects a line total below its allocations and disables exports for legacy
   const editLine = page.locator('form.edit-line').first();
   await editLine.getByLabel('Line total').fill('40.00');
   await editLine.getByRole('button', { name: 'Save line' }).click();
-  await expect(page.getByText('Line total cannot be less than its $60.00 of allocations. Reconcile the splits first.')).toBeVisible();
+  await expect(page.getByText('Line total cannot be less than its $60.00 of job splits. Reconcile the splits first.')).toBeVisible();
 
   await page.getByRole('link', { name: 'All receipts' }).click();
   await page.getByRole('button', { name: /Integrity Supply/ }).click();
@@ -250,7 +254,7 @@ test('rejects a line total below its allocations and disables exports for legacy
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Integrity Supply' })).toBeVisible();
   await expect(page.getByText('Invalid · $20.00 over lines').first()).toBeVisible();
-  await expect(page.getByText('Balance every line and the source total before exporting evidence.')).toBeVisible();
+  await expect(page.getByText('Balance every line and the receipt total before exporting.')).toBeVisible();
   await expect(page.getByRole('button', { name: /CSV/ }).first()).toBeDisabled();
   await expect(page.getByRole('button', { name: /PDF/ }).first()).toBeDisabled();
 });
@@ -261,5 +265,5 @@ test('removes superseded service-worker caches', async ({ page }) => {
   await page.evaluate(async () => { await caches.open('billable-split-v8'); });
   await expect.poll(() => page.evaluate(() => caches.keys())).toContain('billable-split-v8');
   await page.reload();
-  await expect.poll(() => page.evaluate(() => caches.keys())).toEqual(['billable-split-v12']);
+  await expect.poll(() => page.evaluate(() => caches.keys())).toEqual(['billable-split-v13']);
 });

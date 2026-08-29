@@ -15,4 +15,11 @@ describe('production response and update policy', () => {
     expect(worker).toContain("key.startsWith(CACHE_PREFIX) && key !== VERSION");
     expect(worker).toContain('event.waitUntil(deleteOldCaches())');
   });
+
+  it('keeps the offline fallback compatible with the production CSP', () => {
+    const offline = readFileSync(new URL('../public/offline.html', import.meta.url), 'utf8');
+    expect(offline).not.toContain('<style');
+    expect(offline).toContain('href="/legal.css"');
+    expect(offline).toContain('<main id="main">');
+  });
 });

@@ -33,9 +33,9 @@ async function encryptedBackup(password: string): Promise<File> {
 }
 
 describe('encrypted backup integrity errors', () => {
-  it('reports a fingerprint mismatch separately from a wrong password', async () => {
+  it('reports a tamper-check mismatch separately from a wrong password', async () => {
     const backup = await encryptedBackup('correct-horse-battery');
-    await expect(readEncryptedBackup(backup, 'correct-horse-battery')).rejects.toThrow('source image fingerprint does not match');
+    await expect(readEncryptedBackup(backup, 'correct-horse-battery')).rejects.toThrow('receipt image does not match its tamper-check value');
     await expect(readEncryptedBackup(backup, 'wrong-password')).rejects.toThrow('could not be decrypted');
   });
 });
