@@ -1,6 +1,12 @@
-# Billable Split — perfection-loop round 3 handoff
+# Billable Split — adversarial review 4 handoff
 
 ## Result
+
+Review 4 did not modify product code. It wrote `.factory/review-4.md` and found one blocking verification issue: the production full Playwright suite recorded a nondeterministic failure in `@claim:free-receipt-limit` while the test touched demo IndexedDB before proving the sample seed was ready. Serial and repeated isolated retries passed, but the full-suite failure means the claim proof is not deterministic.
+
+The report is committed separately with this handoff. The required repair is test/product-readiness hardening only: wait for `North Yard Supply`, assert a complete seeded record, prevent the storage-error state, then repeat the full local and live suite.
+
+## Earlier result
 
 All cumulative review findings are repaired. The deployed repair is `1218cabdf42f6319c33dd06d0bd20e45d5198345`; it was pushed to `main` and deployed as `1d0b61f3-61e7-43e7-97a3-41bb32a90418`.
 
