@@ -1,25 +1,23 @@
-# Billable Split — adversarial review 5 handoff
+# Billable Split — review 6 handoff
 
 ## Result
 
-Review 5 passes with zero findings. No product code was modified.
+**FAIL — one S2 accessibility finding and zero untested claims.** No product code was changed. The full evidence is in [review-6.md](review-6.md).
 
-The review is recorded in [review-5.md](review-5.md). It includes the complete landing/README copy audit, all 16 independent claim results, demo/storage/network evidence, route/link/metadata checks, and an item-by-item recheck of findings F-1-1 through F-4-1.
+The live demo receipt-list route, `/demo/list`, renders **Add receipt** in `#f6f3e7` over receipt-paper `#f4efd9` (1.03:1). Axe reports this as a serious contrast failure. Repair that control and rerun the live route accessibility scan before accepting the product.
 
 ## Verification
 
-Testing used a clean clone at /tmp/billable-review5.srOMyI/repo from commit 63f2ff893530c5c41e0922488fe3c41dd51965bf.
+The implementation reviewed was `5983d8437c91d9ba4e2ef9c73eb3a369818811d5`; the report/documentation head was `1238d03c2b6e46c00ade00cf656cbe792e263f9f`.
 
-- Every exact command in .factory/claims.json passed independently on desktop and 390 px: 32/32 project executions.
-- The exact live build passed the full browser suite twice: 104/104.
-- npm test passed 11/11.
-- npm run lint passed.
-- npx tsc --noEmit passed.
-- npm run build passed and produced dist/.
-- npm run test:release passed.
-- The live smoke verifier passed in 563 ms with no console/page errors.
-- Fresh mobile and desktop cold reads, demo reset/exit isolation, offline behavior, metadata, security headers, route focus, 404, and all discovered links were checked.
+- Fresh desktop and 390 px phone reads identified the job, contractor audience, and sample action before scrolling.
+- The live sample populated in one click and showed the required banner, reset, and start-for-real controls.
+- All 16 exact claim commands passed independently in a clean clone (32 desktop/mobile executions); no claim is untested.
+- `npm run lint`, `npx tsc --noEmit`, `npm test` (11/11), `npm run build`, and `npm run test:release` passed.
+- Local and live full Playwright suites passed 52/52 each.
+- The live URL verifier passed in 568 ms with no console/page errors.
+- Route, legal, link, privacy, offline, update, keyboard, focus, reduced-motion, and designed-404 checks passed apart from the contrast finding.
 
-## Known gaps and next steps
+## Next step
 
-None within this review contract. No deployment, infrastructure, DNS, billing configuration, or product source was changed.
+Fix F-6-1 only: make the `/demo/list` Add receipt control meet 4.5:1 contrast in desktop and phone views, then repeat the live Axe scan. No deployment, infrastructure, DNS, billing configuration, or source was modified by this review.
