@@ -1,13 +1,13 @@
 # Split receipt costs by job — independent verification 6
 
-**Verdict:** FAIL  
-**Finding count:** 1  
-**Untested claim count:** 0  
-**Implementation candidate:** `8c1b90c1f066f977161e7d86b55b90ca154713c6`  
-**Documentation baseline:** `327c2a258b8445161741cedda8e7c561a90dab06`  
-**Live URL:** <https://billable-receipt-split.sociobot.in>  
-**Verified:** 2026-09-06 UTC  
-**Work order:** `billable-receipt-split-verify-6`
+- **Verdict:** FAIL
+- **Finding count:** 1
+- **Untested claim count:** 0
+- **Implementation candidate:** `8c1b90c1f066f977161e7d86b55b90ca154713c6`
+- **Documentation baseline:** `327c2a258b8445161741cedda8e7c561a90dab06`
+- **Live URL:** <https://billable-receipt-split.sociobot.in>
+- **Verified:** 2026-09-06 UTC
+- **Work order:** `billable-receipt-split-verify-6`
 
 ## Decision
 
@@ -17,8 +17,8 @@ The receipt-splitting workflow, all 16 declared claims, the F-6-1 contrast repai
 
 ### S2 — V6-1: The settings-panel Terms link is too small to tap reliably
 
-**Routes:** `/settings` and `/demo/settings`  
-**Widths checked:** 390 px phone and 1440 px desktop
+- **Routes:** `/settings` and `/demo/settings`
+- **Widths checked:** 390 px phone and 1440 px desktop
 
 The inline **Terms** link in `.license-panel > small` measures 37.7 × 15 CSS pixels. It has no padding and uses `display: inline`. The accessibility contract requires every touch target to be at least 44 × 44 CSS pixels.
 
