@@ -116,6 +116,46 @@ test('has keyboard-visible landmarks and legal links', async ({ page }) => {
   expect(termsResults.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
 });
 
+test('keeps the populated receipt list action readable', async ({ page }) => {
+  await page.goto('/demo/list');
+  await expect(page.getByText('Saved receipts: 1')).toBeVisible();
+  const addReceipt = page.getByRole('button', { name: 'Add receipt' });
+  await expect(addReceipt).toBeVisible();
+
+  const results = await new AxeBuilder({ page }).include('.receipt-index').analyze();
+  expect(results.violations.filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))).toEqual([]);
+
+  const contrastRatio = () => addReceipt.evaluate((button) => {
+    const rgba = (value: string): [number, number, number, number] => {
+      const components = value.match(/[\d.]+/g)?.map(Number) ?? [];
+      return [components[0] ?? 0, components[1] ?? 0, components[2] ?? 0, components[3] ?? 1];
+    };
+    const effectiveBackground = (element: Element): [number, number, number, number] => {
+      let current: Element | null = element;
+      while (current) {
+        const color = rgba(getComputedStyle(current).backgroundColor);
+        if (color[3] > 0) return color;
+        current = current.parentElement;
+      }
+      return [255, 255, 255, 1];
+    };
+    const luminance = ([red, green, blue]: [number, number, number, number]) => {
+      const channels = [red, green, blue].map((channel) => {
+        const value = channel / 255;
+        return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      });
+      return (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2]);
+    };
+    const foreground = luminance(rgba(getComputedStyle(button).color));
+    const background = luminance(effectiveBackground(button));
+    return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+  });
+
+  expect(await contrastRatio()).toBeGreaterThanOrEqual(4.5);
+  await addReceipt.hover();
+  expect(await contrastRatio()).toBeGreaterThanOrEqual(4.5);
+});
+
 test('moves focus and announces the destination on route navigation and browser Back', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Data & license' }).click();
@@ -262,8 +302,8 @@ test('rejects a line total below its allocations and disables exports for legacy
 test('removes superseded service-worker caches', async ({ page }) => {
   await page.goto('/');
   await page.waitForFunction(() => navigator.serviceWorker?.controller !== null);
-  await page.evaluate(async () => { await caches.open('billable-split-v8'); });
-  await expect.poll(() => page.evaluate(() => caches.keys())).toContain('billable-split-v8');
+  await page.evaluate(async () => { await caches.open('billable-split-v14'); });
+  await expect.poll(() => page.evaluate(() => caches.keys())).toContain('billable-split-v14');
   await page.reload();
-  await expect.poll(() => page.evaluate(() => caches.keys())).toEqual(['billable-split-v14']);
+  await expect.poll(() => page.evaluate(() => caches.keys())).toEqual(['billable-split-v15']);
 });
