@@ -1,4 +1,6 @@
-# Copy audit — 2026-08-29
+# Copy audit — 2026-09-06
+
+Repair 4 changed control colors and no visitor-facing words. The complete landing extraction below was rechecked against the deployed v1.3.2 page.
 
 Whitespace-delimited counts include every visible landing sentence. Repeated footer disclosures are listed because they are visible copy.
 

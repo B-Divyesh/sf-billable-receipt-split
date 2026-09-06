@@ -31,6 +31,7 @@ All ordinary text/background pairings target WCAG AA (4.5:1 or better); state is
 
 - The step rail shows location and completeness before content.
 - Primary actions are phosphor-filled rectangles with a 2px ink shadow; pressed controls move 2px toward that shadow.
+- Quiet controls on receipt paper use dark ink at rest and switch instantly to paper text on dark ink when hovered, preserving readable contrast throughout the state change.
 - Receipt line rows behave like ledger strips. Allocation opens inline below the line so the edit emerges from its source.
 - Status chips combine color, a pixel glyph, and plain language.
 - Focus is a high-contrast 3px phosphor outline with a 3px offset.
