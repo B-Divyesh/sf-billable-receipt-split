@@ -91,7 +91,7 @@ footer a { min-width: 44px; min-height: 44px; display: inline-flex; align-items:
 .hero-art figcaption i { width: 22px; border-top: 2px dotted var(--ink-muted); }
 .receipt-index { padding: 56px clamp(20px, 5vw, 80px) 80px; background: var(--paper); color: var(--ink); }
 .receipt-index .eyebrow { color: var(--ink-muted); }
-.receipt-index .button-quiet { border-color: var(--ink); color: var(--ink); }
+.receipt-index .button-quiet { border-color: var(--ink); color: var(--ink); transition: transform 160ms ease; }
 .receipt-index .button-quiet:hover { background: var(--ink); color: var(--paper); }
 .section-heading { margin-bottom: 24px; display: flex; align-items: end; justify-content: space-between; gap: 20px; }
 .receipt-list, .line-list, .job-list { margin: 0; padding: 0; list-style: none; }
